@@ -122,8 +122,7 @@ base_dir <- file.path(
   "OneDrive",
   "Documents", 
   "datacleaningproject", 
-  "nyc311clean",
-  "Journal_of_Data_Science"
+   "Journal_of_Data_Science"
 )
 
 # Define the path for the main data file (CSV file)

@@ -42,7 +42,12 @@ plot_date_field_analysis <- function(
   cat(sprintf("Number of agencies: %d\n", n_agencies))
   
   # Normalize label for filenames
-  base_name <- tolower(gsub("[-\\s]+", "_", label))
+  base_name <- label |>
+    iconv(to = "ASCII//TRANSLIT") |>             # remove any non-ASCII accents
+    gsub("[^A-Za-z0-9]+", "_", x = _) |>         # replace any non-alphanumeric run with underscore
+    gsub("_+", "_", x = _) |>                    # collapse multiple underscores
+    gsub("^_|_$", "", x = _) |>                  # trim leading/trailing underscores
+    tolower()
   pareto_file  <- paste0(base_name, "_pareto_combo_chart.pdf")
   
   # Titles

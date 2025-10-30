@@ -8,18 +8,19 @@ plot_annual_counts_with_projection <- function(
     filename = "annual_trend_plot.pdf",
     title = "Annual 311 Service Requests",
     subtitle = NULL,
-    include_projection_in_growth = FALSE,  # exclude projection from growth %
-    include_projection_in_stats  = FALSE   # exclude projection from multi-year stats
+    include_projection_in_growth = FALSE,
+    include_projection_in_stats  = FALSE
 ) {
   stopifnot(is.data.table(DT), created_col %in% names(DT))
   
+  
   # Ensure POSIXct and derive year
-  DT[, (created_col) := as.POSIXct(get(created_col), tz = "America/New_York")]
-  DT[, year := lubridate::year(get(created_col))]
+  # Preserve existing timezone; only coerce if not already POSIXct
+   DT[, year := lubridate::year(get(created_col))]
   
   # Annual counts
   annual <- DT[, .N, by = year][order(year)]
-  data.table::setnames(annual, "N", "count")
+  setnames(annual, "N", "count")
   annual[, is_projection := FALSE]
   annual[, proj_label := fifelse(is_projection, "Projected", "Actual")]
   
@@ -34,7 +35,7 @@ plot_annual_counts_with_projection <- function(
     
     annual <- rbind(
       annual,
-      data.table::data.table(
+      data.table(
         year = year_est,
         count = projected_value,
         is_projection = TRUE
@@ -45,10 +46,11 @@ plot_annual_counts_with_projection <- function(
     annual[, proj_label := fifelse(is_projection, "Projected", "Actual")]
   }
   
-  # Force factor levels for proj_label so ggpattern doesn’t choke
-  annual[, proj_label := factor(proj_label, levels = c("Actual", "Projected"))]
+
+  # Ensure ordered factor year (important for stable ggplot handling)
+  annual[, year := factor(year, levels = sort(unique(year)))]
   
-  # Total n across non-projected rows → subtitle "(n=xxx)"
+  # Prepare subtitle
   n_total <- annual[is_projection == FALSE, sum(count, na.rm = TRUE)]
   subtitle_final <- if (is.null(subtitle) || !nzchar(subtitle)) {
     sprintf("(n=%s)", scales::comma(n_total))
@@ -56,11 +58,11 @@ plot_annual_counts_with_projection <- function(
     paste0(subtitle, " ", sprintf("(n=%s)", scales::comma(n_total)))
   }
   
-  # Base bars
+  # ----- Base plot -----
   p <- ggplot2::ggplot(
     annual,
     ggplot2::aes(
-      x = factor(year), y = count,
+      x = year, y = count,
       fill = proj_label,
       pattern = proj_label,
       pattern_fill = proj_label,
@@ -76,7 +78,7 @@ plot_annual_counts_with_projection <- function(
     ) +
     ggplot2::geom_text(
       ggplot2::aes(label = scales::comma(count)),
-      vjust = 1.5,   # positions text inside, near the top
+      vjust = 1.5,
       size = 4,
       color = "black",
       fontface = "bold"
@@ -97,6 +99,7 @@ plot_annual_counts_with_projection <- function(
       values = c("Actual" = NA, "Projected" = "#D55E00"),
       drop = FALSE
     ) +
+    ggplot2::scale_x_discrete(drop = FALSE) +
     ggplot2::labs(
       title = title,
       subtitle = subtitle_final,
@@ -107,19 +110,23 @@ plot_annual_counts_with_projection <- function(
     ) +
     david_theme()
   
-  # Trendline + growth stats only if ≥ 2 years
+  # ----- Trendline + growth stats -----
   model <- NULL
   if (nrow(if (include_projection_in_growth) annual else annual[is_projection == FALSE]) >= 2) {
     model_data <- if (include_projection_in_growth) annual else annual[is_projection == FALSE]
     
-    model    <- stats::lm(count ~ year, data = model_data)
+    # Convert factor -> numeric for modeling only
+    model_data[, year_num := as.numeric(as.character(year))]
+    
+    model    <- stats::lm(count ~ year_num, data = model_data)
     trend_df <- copy(model_data)[, trend := predict(model)]
+    trend_df[, year := factor(year_num, levels = levels(annual$year))]
     
     # Add trend line
     p <- p +
       ggplot2::geom_line(
         data = trend_df,
-        mapping = aes(x = factor(year), y = trend, group = 1),
+        mapping = aes(x = year, y = trend, group = 1),
         inherit.aes = FALSE,
         color = "#D55E00",
         linetype = "longdash",
@@ -127,21 +134,19 @@ plot_annual_counts_with_projection <- function(
       )
     
     # Growth %
-    setorder(model_data, year)
-    first_year  <- model_data[1, year]
+    setorder(model_data, year_num)
+    first_year  <- model_data[1, as.integer(as.character(year))]
     first_count <- model_data[1, count]
-    last_year   <- model_data[.N, year]
+    last_year   <- model_data[.N, as.integer(as.character(year))]
     last_count  <- model_data[.N, count]
     growth_pct  <- (last_count / first_count) - 1
     
     label_text <- sprintf(
-      "Growth %d-->%d: %s",
+      "Growth %d–%d: %s",
       first_year, last_year, scales::percent(growth_pct, accuracy = 0.1)
     )
-    label_df <- trend_df[year == last_year, .(
-      year  = factor(year),
-      y     = trend,
-      label = label_text
+    label_df <- trend_df[year == as.character(last_year), .(
+      year, y = trend, label = label_text
     )]
     
     p <- p +
@@ -158,12 +163,12 @@ plot_annual_counts_with_projection <- function(
       )
   }
   
-  # "Projected" bar label (if present)
+  # ----- Projected bar label (if applicable) -----
   if (any(annual$is_projection)) {
     p <- p +
       ggplot2::geom_label(
         data = annual[is_projection == TRUE],
-        mapping = aes(x = factor(year), y = count/2, label = "Projected"),
+        mapping = aes(x = year, y = count / 2, label = "Projected"),
         inherit.aes = FALSE,
         vjust = 0.5,
         fill = "#F0E442",
@@ -172,46 +177,56 @@ plot_annual_counts_with_projection <- function(
       )
   }
   
-  # Always print the plot
   print(p)
-  Sys.sleep(2)
+  Sys.sleep(3)
   
-  ## ---------- Multi-year statistics (console) ----------
+  # ----- Multi-year statistics -----
   stats_data <- if (include_projection_in_stats) annual else annual[is_projection == FALSE]
   multi_year_stats <- data.table()
   
   if (nrow(stats_data) >= 1) {
+    # Convert factor to numeric year values
+    stats_data[, year_num := as.integer(as.character(year))]
+    
     mean_val   <- mean(stats_data$count, na.rm = TRUE)
     median_val <- median(stats_data$count, na.rm = TRUE)
     sd_val     <- sd(stats_data$count, na.rm = TRUE)
     max_idx    <- which.max(stats_data$count)
     min_idx    <- which.min(stats_data$count)
-    max_year   <- stats_data$year[max_idx]
+    max_year   <- stats_data$year_num[max_idx]
     max_count  <- stats_data$count[max_idx]
-    min_year   <- stats_data$year[min_idx]
+    min_year   <- stats_data$year_num[min_idx]
     min_count  <- stats_data$count[min_idx]
     total_records <- sum(stats_data$count, na.rm = TRUE)
     
-    # Calculate daily statistics from original data
-    daily_data <- DT[, .(daily_count = .N), by = 
-                       .(date = as.Date(get(created_col), 
-                        tz = "America/New_York"))]    
-                        setorder(daily_data, date)
+    # Calculate daily statistics
+    daily_data <- DT[, .(daily_count = .N),
+                     by = .(date = as.Date(get(created_col), tz = "America/New_York"))]
+    setorder(daily_data, date)
     
-    # Find busiest and least busy days
-    max_day_idx <- which.max(daily_data$daily_count)
-    min_day_idx <- which.min(daily_data$daily_count)
+    busiest_date <- daily_data[which.max(daily_count), date]
+    busiest_count <- daily_data[which.max(daily_count), daily_count]
+    least_busy_date <- daily_data[which.min(daily_count), date]
+    least_busy_count <- daily_data[which.min(daily_count), daily_count]
     
-    busiest_date <- daily_data$date[max_day_idx]
-    busiest_count <- daily_data$daily_count[max_day_idx]
-    least_busy_date <- daily_data$date[min_day_idx]
-    least_busy_count <- daily_data$daily_count[min_day_idx]
+    # Calculate monthly statistics
+    monthly_data <- DT[, .(monthly_count = .N),
+                       by = .(month_start = lubridate::floor_date(get(created_col), "month"))]
+    monthly_data[, month := format(month_start, "%Y-%m")]
     
+    unique(substr(monthly_data$month, 1, 7))
+    
+    
+    busiest_month <- monthly_data[which.max(monthly_count), month]
+    busiest_month_count <- monthly_data[which.max(monthly_count), monthly_count]
+    least_busy_month <- monthly_data[which.min(monthly_count), month]
+    least_busy_month_count <- monthly_data[which.min(monthly_count), monthly_count]
+    
+    # ---- Console output ----
     cat("\nMulti-year statistics ",
         if (include_projection_in_stats) "(Actuals + Projected):\n" else "(Actuals only):\n",
         sep = "")
-    cat("  Years covered: ", paste(range(stats_data$year), collapse = "–"), "\n", sep = "")
-    cat("\n")
+    cat("  Years covered: ", paste(range(stats_data$year_num), collapse = "–"), "\n", sep = "")
     cat("  Total Records: ", scales::comma(total_records), "\n", sep = "")
     cat("  Yearly Mean:   ", scales::comma(round(mean_val, 1)), "\n", sep = "")
     cat("  Yearly Median: ", scales::comma(round(median_val, 1)), "\n", sep = "")
@@ -221,12 +236,15 @@ plot_annual_counts_with_projection <- function(
     if (exists("growth_pct")) {
       cat("  Growth %: ", scales::percent(growth_pct, accuracy = 0.1), "\n", sep = "")
     }
+    cat("  Busiest Month: ", busiest_month, " (", scales::comma(busiest_month_count), ")\n", sep = "")
+    cat("  Least Busy Month: ", least_busy_month, " (", scales::comma(least_busy_month_count), ")\n", sep = "")
     cat("  Busiest Day: ", format(busiest_date, "%Y-%m-%d"), " (", scales::comma(busiest_count), ")\n", sep = "")
     cat("  Least Busy Day: ", format(least_busy_date, "%Y-%m-%d"), " (", scales::comma(least_busy_count), ")\n", sep = "")
     
+    # ---- Structured table for return ----
     multi_year_stats <- data.table(
-      years_start = min(stats_data$year),
-      years_end   = max(stats_data$year),
+      years_start = min(stats_data$year_num),
+      years_end   = max(stats_data$year_num),
       mean        = mean_val,
       median      = median_val,
       sd          = sd_val,
@@ -234,6 +252,10 @@ plot_annual_counts_with_projection <- function(
       max_count   = max_count,
       min_year    = min_year,
       min_count   = min_count,
+      busiest_month = busiest_month,
+      busiest_month_count = busiest_month_count,
+      least_busy_month = least_busy_month,
+      least_busy_month_count = least_busy_month_count,
       busiest_date = busiest_date,
       busiest_count = busiest_count,
       least_busy_date = least_busy_date,
@@ -242,22 +264,20 @@ plot_annual_counts_with_projection <- function(
     )
   }
   
-  # Add this section right after the multi-year statistics and before the ggsave line
-  
-  ## ---------- Year-by-year counts ----------
+
+  # ----- Year-by-year summary -----
   cat("\nYear-by-year counts:\n")
   for (i in 1:nrow(annual)) {
-    year_val <- annual$year[i]
-    count_val <- annual$count[i]
+    year_val <- as.character(annual$year[i])
+    count_val <- scales::comma(annual$count[i])
     proj_status <- if (annual$is_projection[i]) " (Projected)" else ""
-    cat("  ", year_val, ": ", scales::comma(count_val), proj_status, "\n", sep = "")
+    cat("  ", year_val, ": ", count_val, proj_status, "\n", sep = "")
   }
   cat("\n")
   
-  ## ----------------------------------------
-  
+  # ----- Save plot -----
   if (!dir.exists(chart_dir)) dir.create(chart_dir, recursive = TRUE)
-  ggsave(file.path(chart_dir, filename), plot = p, width = 10, height = 8.5)
+  ggplot2::ggsave(file.path(chart_dir, filename), plot = p, width = 10, height = 8.5)
   
   invisible(list(data = annual, model = model, plot = p, stats = multi_year_stats))
 }

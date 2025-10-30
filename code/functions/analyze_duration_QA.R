@@ -155,13 +155,13 @@ analyze_duration_QA <- function(
   colnames(negative_all)  # Check column names
   head(negative_all)      # See the data structure
   
-  # Check what's actually in your data
-  cat("\n=== Debugging negative_all ===\n")
-  cat("Number of rows:", nrow(negative_all), "\n")
-  cat("Column names:", paste(colnames(negative_all), collapse = ", "), "\n")
-  cat("First few rows:\n")
-  print(head(negative_all))
-  
+  # # Check what's actually in your data
+  # cat("\n=== Debugging negative_all ===\n")
+  # cat("Number of rows:", nrow(negative_all), "\n")
+  # cat("Column names:", paste(colnames(negative_all), collapse = ", "), "\n")
+  # cat("First few rows:\n")
+  # print(head(negative_all))
+  # 
   cat("\n=== Check for NAs ===\n")
   cat("NAs in duration_hours:", sum(is.na(negative_all$duration_hours)), "\n")
   cat("NAs in duration_min:", sum(is.na(negative_all$duration_min)), "\n")
@@ -204,35 +204,43 @@ analyze_duration_QA <- function(
   pos_extreme_cnt <- nrow(positive_extreme)
   
   # Averages, mins, and maxs using the correct column names
-  avg_neg_all     <- if (neg_count > 0) mean(negative_all$duration_days, na.rm = TRUE) else NA_real_
-  avg_neg_small   <- if (neg_small > 0) mean(negative_small$duration_days, na.rm = TRUE) else NA_real_
-  avg_neg_large   <- if (neg_large > 0) mean(negative_large$duration_days, na.rm = TRUE) else NA_real_
-  avg_neg_extreme <- if (neg_extreme_cnt > 0) mean(negative_extreme$duration_days, na.rm = TRUE) else NA_real_
+  avg_neg_all     <- if (neg_count        > 0) round(mean(negative_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  avg_neg_small   <- if (neg_small        > 0) round(mean(negative_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_neg_large   <- if (neg_large        > 0) round(mean(negative_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_neg_extreme <- if (neg_extreme_cnt  > 0) round(mean(negative_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
   
-  min_neg_all     <- if (neg_count > 0) min(negative_all$duration_days, na.rm = TRUE) else NA_real_
-  min_neg_small   <- if (neg_small > 0) min(negative_small$duration_days, na.rm = TRUE) else NA_real_
-  min_neg_large   <- if (neg_large > 0) min(negative_large$duration_days, na.rm = TRUE) else NA_real_
-  min_neg_extreme <- if (neg_extreme_cnt > 0) min(negative_extreme$duration_days, na.rm = TRUE) else NA_real_
+  # --- Negative durations ---
+  min_neg_all     <- if (neg_count > 0) round(min(negative_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  min_neg_small   <- if (neg_small > 0) round(min(negative_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  min_neg_large   <- if (neg_large > 0) round(min(negative_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  min_neg_extreme <- if (neg_extreme_cnt > 0) round(min(negative_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
   
-  max_neg_all     <- if (neg_count > 0) max(negative_all$duration_days, na.rm = TRUE) else NA_real_
-  max_neg_small   <- if (neg_small > 0) max(negative_small$duration_days, na.rm = TRUE) else NA_real_
-  max_neg_large   <- if (neg_large > 0) max(negative_large$duration_days, na.rm = TRUE) else NA_real_
-  max_neg_extreme <- if (neg_extreme_cnt > 0) max(negative_extreme$duration_days, na.rm = TRUE) else NA_real_
+  max_neg_all     <- if (neg_count > 0) round(max(negative_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  max_neg_small   <- if (neg_small > 0) round(max(negative_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  max_neg_large   <- if (neg_large > 0) round(max(negative_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  max_neg_extreme <- if (neg_extreme_cnt > 0) round(max(negative_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
   
-  avg_pos_all     <- if (pos_count > 0) mean(positive_all$duration_days, na.rm = TRUE) else NA_real_
-  avg_pos_small   <- if (pos_small > 0) mean(positive_small$duration_days, na.rm = TRUE) else NA_real_
-  avg_pos_large   <- if (pos_large > 0) mean(positive_large$duration_days, na.rm = TRUE) else NA_real_
-  avg_pos_extreme <- if (pos_extreme_cnt > 0) mean(positive_extreme$duration_days, na.rm = TRUE) else NA_real_
+  avg_neg_all     <- if (neg_count > 0) round(mean(negative_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  avg_neg_small   <- if (neg_small > 0) round(mean(negative_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_neg_large   <- if (neg_large > 0) round(mean(negative_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_neg_extreme <- if (neg_extreme_cnt > 0) round(mean(negative_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
   
-  min_pos_all     <- if (pos_count > 0) min(positive_all$duration_days, na.rm = TRUE) else NA_real_
-  min_pos_small   <- if (pos_small > 0) min(positive_small$duration_days, na.rm = TRUE) else NA_real_
-  min_pos_large   <- if (pos_large > 0) min(positive_large$duration_days, na.rm = TRUE) else NA_real_
-  min_pos_extreme <- if (pos_extreme_cnt > 0) min(positive_extreme$duration_days, na.rm = TRUE) else NA_real_
+  # --- Positive durations ---
+  min_pos_all     <- if (pos_count > 0) round(min(positive_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  min_pos_small   <- if (pos_small > 0) round(min(positive_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  min_pos_large   <- if (pos_large > 0) round(min(positive_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  min_pos_extreme <- if (pos_extreme_cnt > 0) round(min(positive_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
   
-  max_pos_all     <- if (pos_count > 0) max(positive_all$duration_days, na.rm = TRUE) else NA_real_
-  max_pos_small   <- if (pos_small > 0) max(positive_small$duration_days, na.rm = TRUE) else NA_real_
-  max_pos_large   <- if (pos_large > 0) max(positive_large$duration_days, na.rm = TRUE) else NA_real_
-  max_pos_extreme <- if (pos_extreme_cnt > 0) max(positive_extreme$duration_days, na.rm = TRUE) else NA_real_
+  max_pos_all     <- if (pos_count > 0) round(max(positive_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  max_pos_small   <- if (pos_small > 0) round(max(positive_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  max_pos_large   <- if (pos_large > 0) round(max(positive_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  max_pos_extreme <- if (pos_extreme_cnt > 0) round(max(positive_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
+  
+  avg_pos_all     <- if (pos_count > 0) round(mean(positive_all$duration_days,     na.rm = TRUE), 2) else NA_real_
+  avg_pos_small   <- if (pos_small > 0) round(mean(positive_small$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_pos_large   <- if (pos_large > 0) round(mean(positive_large$duration_days,   na.rm = TRUE), 2) else NA_real_
+  avg_pos_extreme <- if (pos_extreme_cnt > 0) round(mean(positive_extreme$duration_days, na.rm = TRUE), 2) else NA_real_
+  
  
   # Print negative breakdown
   cat("\nNegative duration breakdown:\n")
@@ -358,6 +366,7 @@ analyze_duration_QA <- function(
     w   <- max(nchar(dfp$metric), na.rm = TRUE)
     dfp$metric <- format(dfp$metric, width = w, justify = "left")
     dfp$value  <- format(dfp$value,  justify = "right")
+   
     print(noquote(dfp), row.names = FALSE)
   }
   

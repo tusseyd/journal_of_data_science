@@ -145,7 +145,9 @@ analyze_skewed_durations <- function(
   )]
   
   # Thresholds should not be negative seconds
-  methods_dt[threshold_seconds < 0, threshold_seconds := 0]
+  methods_dt[, threshold_seconds := round(threshold_seconds, 4)]
+  methods_dt[, outlier_pct := round(outlier_pct, 4)]
+  
   
   if (print_summary) {
     cat("\n=== OUTLIER DETECTION METHODS (Applied to Truncated Data) ===\n")

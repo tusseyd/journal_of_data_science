@@ -478,6 +478,11 @@ analyze_datetime_patterns <- function(
     
     # BARCHART CHECK: Requires > 1 unique hour with top_of_hour records
     if (nrow(hourly_top_hour[top_of_hour > 0]) > 1) {
+      
+      # Reorder factor levels to start at 08:00 and wrap to 07:00
+      hour_order <- c(8:23, 0:7)
+      hourly_top_hour[, hour := factor(hour, levels = hour_order)]
+      
       plot_barchart(
         DT        = hourly_top_hour,
         x_col     = "hour",
@@ -501,7 +506,6 @@ analyze_datetime_patterns <- function(
       )
     }
   }
-  
   invisible(list(
     hour_summary          = hour_summary,
     midnight_summary      = if(exists("midnight_summary")) midnight_summary else NULL,

@@ -5,14 +5,14 @@ main_data_file <-
   "5-year_311SR_01-01-2020_thru_12-31-2024_AS_OF_10-10-2025.rds"
  
 # Boolean flag. TRUE to redirect console output to text file
-# FALSE to display console output on the screen
-enable_sink <- FALSE    
-
+# FALSE to display console outpx`t on the screen
+enable_sink <- FALSE      
+ 
 #The "as of" date in "YYYY-MM-DD" format
-projection_date <- "2025-10-20"   
+projection_date <- "2025-10-29"   
 
 #Number of SRs for the year through the projection_date  
-projection_SR_count <- 2779203  
+projection_SR_count <- 2878716   
 
 # Okabe-Ito palette for colorblind safe 
 palette(c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
@@ -78,31 +78,7 @@ load_required_packages <- function(verbose = TRUE) {
 # Default verbose output
 load_required_packages()
 
-# 
-# # 2. Install ggrastr directly from its GitHub repo
-# remotes::install_github("VPetukhov/ggrastr")
-# 
-
-# -------------------------------------------------------------
-# 📁 Set Working Directory for the Project.
-# -------------------------------------------------------------
-# Set working directory to the location of the initialization script
-# setup_paths.R
-# Automatically detects if running in project or standalone
-
-# # Check if we're in an RStudio project
-# if (requireNamespace("rstudioapi", quietly = TRUE) && 
-#     rstudioapi::isAvailable() && 
-#     !is.null(rstudioapi::getActiveProject())) {
-#   
-#   # PROJECT MODE: Use relative paths from project root
-#   base_dir <- here::here()  # or getwd() if you don't have 'here' package
-#   cat("Running in PROJECT mode\n")
-#   cat("Base directory:", base_dir, "\n")
-#   
-# } else {
-  
-  # STANDALONE MODE: Use your manual absolute path
+# STANDALONE MODE: Use your manual absolute path
   base_dir <- file.path(
     "C:",
     "Users",
@@ -110,7 +86,6 @@ load_required_packages()
     "OneDrive",
     "Documents", 
     "datacleaningproject", 
-    "nyc311clean",
     "Journal_of_Data_Science"
   )
   cat("Running in STANDALONE mode\n")
@@ -185,6 +160,7 @@ source_functions_safely(functions_dir)
 options(scipen = 999) # Set scipen option to a large value.
 options(digits = 15) # Set the number of decimal places to 15, the max observed.
 options(datatable.print.class = FALSE)
+options(max.print = 1000)
 
 # Extract the date after "AS_OF_"
 extracted_date <- sub(".*AS_OF_([0-9-]+).*", "\\1", main_data_file)
@@ -322,6 +298,10 @@ earliest_title <- format(earliest_date, fmt_day, tz = tz_out)
 latest_title   <- format(latest_date,   fmt_day, tz = tz_out)
 
 #########################################################################
+# Probe right before function call
+range(d311$created_date)
+summary(attr(d311$created_date, "tzone"))
+
 # Plot yearly growth of 311 SRs.
 message("\nCreating year plot and statistics.")
 yearly_bar_chart <- plot_annual_counts_with_projection(
@@ -371,76 +351,58 @@ cat("\n\nData contains SRs from", earliest_date_formatted,
 cat("\n\n********** Missing entires by column **********")
 
 #########################################################################
-# # Identify date columns (optional; not needed for counting, but keeping for reference)
-date_cols <- c("created_date", "closed_date", "due_date", "resolution_action_updated_date")
-message("\nDetermining missing values.")
-
-# Per-column NA counts (no giant logical table)
+# --- Per-column completeness analysis (percent filled) ----------------------
 na_counts <- vapply(d311, function(x) sum(is.na(x)), integer(1L))
-# Assemble and compute percentages
-missingDataPerColumn <- data.table(
-  field    = names(na_counts),
-  NA_count = unname(na_counts)
+num_rows_d311 <- nrow(d311)
+completenessPerColumn <- data.table(
+  field        = names(na_counts),
+  NA_count     = unname(na_counts),
+  filled_count = num_rows_d311 - unname(na_counts)
 )
-missingDataPerColumn[, pct_na := round(100 * NA_count / num_rows_d311, 1)]
-setorder(missingDataPerColumn, -NA_count)
+completenessPerColumn[, `:=`(
+  pct_missing = round(100 * NA_count / num_rows_d311, 2),
+  pct_complete = round(100 * filled_count / num_rows_d311, 2)
+)]
+# Sort ascending so lowest completeness appears first (left side of chart)
+setorder(completenessPerColumn, pct_complete)
+# Apply factor levels based on that order
+completenessPerColumn[, field := factor(field, levels = field)]
+cat("\nNumber and % COMPLETE entries per column:\n")
+print(completenessPerColumn[, .(field, filled_count, pct_complete)], row.names = FALSE)
 
-# Format for display
-display_table <- copy(missingDataPerColumn)
-display_df <- data.frame(
-  field = format(display_table$field, justify = "left"),
-  NA_count = format(display_table$NA_count, big.mark = ",", justify = "right"),
-  pct_na = format(display_table$pct_na, justify = "right")
-)
+# --- Overall dataset completeness summary ---
+total_cells <- num_rows_d311 * ncol(d311)
+total_na <- sum(na_counts)
+total_filled <- total_cells - total_na
+overall_pct_missing <- round(100 * total_na / total_cells, 2)
+overall_pct_complete <- round(100 * total_filled / total_cells, 2)
 
-cat("\nNumber and % NA entries per column:\n")
-print(display_df, row.names = FALSE)
+cat("\n\n--- Overall Dataset Completeness ---\n")
+cat(sprintf("Total cells: %s\n", format(total_cells, big.mark = ",")))
+cat(sprintf("Total NA/missing: %s\n", format(total_na, big.mark = ",")))
+cat(sprintf("Total filled: %s\n", format(total_filled, big.mark = ",")))
+cat(sprintf("Percent missing: %s%%\n", overall_pct_missing))
+cat(sprintf("Percent complete: %s%%\n", overall_pct_complete))
 
-# Calculate overall dataset sparsity
-total_cells <- as.numeric(num_rows_d311) * ncol(d311)
-total_missing <- sum(na_counts)
-overall_sparsity_pct <- round(100 * total_missing / total_cells, 2)
-
-cat(sprintf("\nOverall dataset sparsity: %s%% (%s missing values out of %s total cells)\n",
-            overall_sparsity_pct,
-            format(total_missing, big.mark = ","),
-            format(total_cells, big.mark = ",")))
-
-# Fix factor order for plotting
-missingDataPerColumn[, field := factor(field, levels = field)]
-
-# First, add a pct_complete column to your data
-missingDataPerColumn[, pct_complete := 100 - pct_na]
-
-# Then create the chart with color grouping
+# Plot
 create_basic_bar_chart(
-  DT          = missingDataPerColumn,
-  x_col       = "field",
-  y_col       = "pct_complete",  # Changed from pct_na
-  title       = "Data Completeness by Field",
-  # Color grouping parameters
+  DT            = completenessPerColumn,
+  x_col         = "field",
+  y_col         = "pct_complete",
+  title         = "Data Completeness by Field",
   use_color_groups = TRUE,
-  group_thresholds = c(94, 56),  # Adjust these based on your quality standards
-  group_colors     = c("#009E73", "#F0E442", "#D55E00"),  # green, yellow, orange-red
-  group_labels     = c("Excellent (≥94%)", "Fair (56-94%)", "Poor (<56%)"),
+  horizontal = TRUE,
+  group_thresholds = c(94, 53),
+  group_colors     = c("#009E73", "#F0E442", "#D55E00"),
+  group_labels     = c("Excellent (≥94%)", "Fair (56–94%)", "Poor (<56%)"),
   legend_position  = "top",
-  # Labels
-  show_labels = FALSE,
-  label_col   = "pct_complete",  # Or keep as "pct_na" if yo u prefer
-  label_angle = -70,
-  label_size  = 3.5,
-  vjust       = 0.5,
-  # Theme
-  text_size    = 9,
-  x_axis_angle = 50,
-  x_axis_face  = "bold",
-  grid_line_width = 0.5,
-  remove_x_title = TRUE,
-  remove_y_title = TRUE,
-  plot_margin    = c(1, 2, 1, 2),
-  # Save
-  chart_dir   = chart_dir,
-  filename    = "data_completeness_by_field_bar_chart.pdf"
+  text_size        = 9,
+  x_axis_angle     = 50,
+  x_axis_face      = "bold",
+  remove_x_title   = TRUE,
+  remove_y_title   = TRUE,
+  chart_dir        = chart_dir,
+  filename         = "data_completeness_by_field_bar_chart.pdf"
 )
 
 #########################################################################
@@ -783,6 +745,86 @@ checks_df <- data.frame(
   is_numeric = checks
 )
 print(checks_df, row.names = FALSE)
+
+#########################################################################
+
+cat("\n\n********** Latitude/Longitude Precision Analysis **********\n")
+
+#########################################################################
+# --- Analyze decimal precision in lat/lon fields ---
+message("\nAnalyzing decimal precision in lat/long fields.")
+
+# Analyze latitude
+cat("\n--- Latitude Precision Analysis ---\n")
+lat_precision <- analyze_decimal_precision(d311, "latitude")
+if (!is.null(lat_precision)) {
+  print(lat_precision, row.names = FALSE)
+  cat(sprintf("\nTotal valid latitude values: %s\n", 
+              format(sum(lat_precision$N), big.mark = ",")))
+}
+
+# Analyze longitude
+cat("\n--- Longitude Precision Analysis ---\n")
+lon_precision <- analyze_decimal_precision(d311, "longitude")
+if (!is.null(lon_precision)) {
+  print(lon_precision, row.names = FALSE)
+  cat(sprintf("\nTotal valid longitude values: %s\n", 
+              format(sum(lon_precision$N), big.mark = ",")))
+}
+
+# Combined summary statistics
+cat("\n--- Summary Statistics ---\n")
+if (!is.null(lat_precision)) {
+  cat(sprintf("Latitude:
+              \n Min precision: %d,  Max precision: %d,  Median: %.2f", 
+              min(lat_precision$summary_precision$decimal_places),
+              max(lat_precision$summary_precision$decimal_places),
+              mean(lat_precision$summary_precision$decimal_places)))
+}
+
+if (!is.null(lon_precision)) {
+  if (!is.null(lat_precision)) {
+    cat(sprintf("Longitude:
+              \n Min precision: %d,  Max precision: %d,  Median: %.2f", 
+                min(lon_precision$summary_precision$decimal_places),
+                max(lon_precision$summary_precision$decimal_places),
+                mean(lon_precision$summary_precision$decimal_places)))
+  }  
+}
+
+# Create a combined comparison table
+if (!is.null(lat_precision) && !is.null(lon_precision)) {
+  cat("\n--- Side-by-side Comparison ---\n")
+  
+  # Get all unique decimal place values
+  all_decimals <- sort(unique(c(lat_precision$summary_precision$decimal_places, 
+                                lon_precision$summary_precision$decimal_places)))
+  
+  comparison <- data.table(decimal_places = all_decimals)
+  
+    # Merge latitude data
+  comparison <- merge(comparison, 
+                      lat_precision[, .(decimal_places, 
+                                        lat_count = N, 
+                                        lat_pct = pct)],
+                      by = "decimal_places", all.x = TRUE)
+  
+  # Merge longitude data
+  comparison <- merge(comparison,
+                      lon_precision[, .(decimal_places, 
+                                        lon_count = N, 
+                                        lon_pct = pct)],
+                      by = "decimal_places", all.x = TRUE)
+  
+  # Replace NAs with 0
+  comparison[is.na(lat_count), `:=`(lat_count = 0, lat_pct = 0.00)]
+  comparison[is.na(lon_count), `:=`(lon_count = 0, lon_pct = 0.00)]
+  
+  setorder(comparison, decimal_places)
+  
+  print(comparison, row.names = FALSE)
+}
+
 
 #########################################################################
 
@@ -1139,8 +1181,12 @@ d311 <- calculate_durations(d311, "created_date", "closed_date", tz = "America/N
 cat("\n=== CREATED DATE ANALYSIS ===\n")
 
 # Assuming date_cols is a character vector of column names
-# e.g., date_cols <- c("created_date", "closed_date", "resolved_date", "due_date")
-
+date_cols <- c(
+  "resolution_action_updated_date",
+  "due_date",
+  "created_date", 
+  "closed_date"
+)
 for (col in date_cols) {
   cat("\n", rep("=", 60), "\n", sep = "")
   cat("Date Field:", col, "\n")
@@ -1179,12 +1225,16 @@ for (col in date_cols) {
 # total rows in d311
 total_rows <- num_rows_d311
 
-# helper function to format counts + percentages
 fmt_count_pct <- function(n, total) {
-  sprintf("%s (%.2f%%)", 
-          prettyNum(n, big.mark=","), 
-          round(100 * n / total), 2)
+  # Handle NA or zero totals gracefully
+  if (is.null(total) || is.na(total) || total == 0) {
+    return(sprintf("%s (n/a)", prettyNum(n, big.mark = ",")))
+  }
+  
+  pct <- 100 * n / total
+  sprintf("%s (%.2f%%)", prettyNum(n, big.mark = ","), pct)
 }
+
 
   # Anomaly checks
   future_created_dates        <- d311[created_date > as_of_date]
@@ -1406,7 +1456,7 @@ anomaly_list_resolution <- list(
   list(
     dt = past_resolution_action_updated_dates,
     label = "Past Resolution Action Updated Dates",
-    condition = "Resolution Action Updated Before Genesis"
+    condition = "Resolution Action Updated Before 311 Genesis"
   ),
   list(
     dt = midnight_only_resolution_action_updated_dates,
@@ -1520,6 +1570,7 @@ cat("  Noon-only closed:      ",
 cat("  Closed < Created:      ", 
     fmt_count_pct(nrow(closed_before_created), total_rows), "\n")
 
+
 # Define anomaly datasets and their labels for closed_date
 anomaly_list_closed <- list(
   list(
@@ -1619,7 +1670,6 @@ dst_start_summary <- analyze_dst_springforward(
     show_examples = 10
 ) 
 
-
 ################################################################################
 
 #zero_screenout <- audit_zero_time_screenout(d311)
@@ -1673,6 +1723,7 @@ for (col_name in date_cols) {
   
   all_patterns_results[[result_name]] <- results
 }
+
 
 #########################################################################
 
@@ -1830,14 +1881,25 @@ cat("LogNormal_3SD threshold:", threshold_numeric, "seconds\n")
 
 cat("\n=== COMPREHENSIVE DURATION CATEGORY ANALYSIS ===\n")
  
-  duraton_analysis <- analyze_duration_QA(d311, chart_dir = chart_dir)
+duraton_analysis <- analyze_duration_QA(d311, chart_dir = chart_dir)
+
+
+cat("\n=== RESPONSE TIMES BY COMPLAINT CATEGORY ANALYSIS ===\n")
+
+complaint_stats <- summarize_complaint_response(
+  d311, 
+  print_top = 300,
+  min_records = 25)
+
   
-  # ==============================================================================
-  # END OF DURATION ANALYSIS
-  # ==============================================================================
-  #########################################################################
+# ==============================================================================
+# END OF DURATION ANALYSIS
+# ==============================================================================
+
   
-  cat("\n\n**********CHECKING FOR DUPLICATE VALUES**********\n")
+#########################################################################
+  
+cat("\n\n**********CHECKING FOR DUPLICATE VALUES**********\n")
 
 #########################################################################
 message("\nChecking fields for duplicates.")
