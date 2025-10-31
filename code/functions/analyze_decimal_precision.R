@@ -73,31 +73,31 @@ analyze_decimal_precision <- function(
   }
   
   # # === NEW PARETO CHART CREATION ===
-  # if (generate_plots && nrow(agency_summary) > 0) {
-  #   
-  #   # Default chart directory if missing
-  #   if (is.null(chart_dir)) chart_dir <- getwd()
-  #   
-  #   if (!dir.exists(chart_dir)) {
-  #     dir.create(chart_dir, recursive = TRUE)
-  #   }
-  #   
-  #   filename <- sprintf("pareto_low_precision_%s_by_agency.pdf", field_name)
-  #   
-  #   plot_pareto_combo(
-  #     DT = agency_summary,
-  #     x_col = agency,
-  #     chart_dir = chart_dir,
-  #     filename = filename,
-  #     title = sprintf("Low Precision %s by Agency", tools::toTitleCase(field_name)),
-  #     subtitle = sprintf("Threshold < %d decimal places", low_precision_threshold),
-  #     top_n = 30L,
-  #     flip = FALSE
-  #   )
-  # 
-  #   cat(sprintf("\nSaved Pareto chart: %s\n",
-  #               file.path(chart_dir, filename)))
-  # }
+  # === NEW PARETO CHART CREATION ===
+  if (generate_plots && nrow(agency_summary) > 0) {
+    # Default chart directory if missing
+    if (is.null(chart_dir)) chart_dir <- getwd()
+    if (!dir.exists(chart_dir)) {
+      dir.create(chart_dir, recursive = TRUE)
+    }
+    
+    filename <- sprintf("pareto_low_precision_%s_by_agency.pdf", field_name)
+    
+    # Pass the FILTERED raw data, not the aggregated summary
+    low_precision_dt <- DT[get(flag_col) == TRUE & !is.na(agency)]
+    
+    plot_pareto_combo(
+      DT = low_precision_dt,           # Raw data with low precision rows only
+      x_col = agency,
+      chart_dir = chart_dir,
+      filename = filename,
+      title = sprintf("Low Precision %s by Agency", tools::toTitleCase(field_name)),
+      subtitle = sprintf("Threshold < %d decimal places", low_precision_threshold),
+      top_n = 30L
+    )
+    cat(sprintf("\nSaved Pareto chart: %s\n",
+                file.path(chart_dir, filename)))
+  }
   
   invisible(list(
     summary_precision = precision_summary[],

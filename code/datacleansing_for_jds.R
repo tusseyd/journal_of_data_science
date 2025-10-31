@@ -86,7 +86,7 @@ load_required_packages()
     "OneDrive",
     "Documents", 
     "datacleaningproject", 
-    "Journal_of_Data_Science"
+    "journal_of_data_science"
   )
   cat("Running in STANDALONE mode\n")
   cat("Base directory:", base_dir, "\n")
@@ -752,46 +752,57 @@ cat("\n\n********** Latitude/Longitude Precision Analysis **********\n")
 
 #########################################################################
 # --- Analyze decimal precision in lat/lon fields ---
-message("\nAnalyzing decimal precision in lat/long fields.")
+message("\nAnalyzing decimal precision in the lat/long fields.")
 
+##################
 # Analyze latitude
 cat("\n--- Latitude Precision Analysis ---\n")
-lat_precision <- analyze_decimal_precision(d311, "latitude")
+lat_precision <- analyze_decimal_precision(
+  DT             =  d311,
+  field_name     = "latitude",
+  verbose        = TRUE,
+  chart_dir      = chart_dir,       
+  generate_plots = TRUE   
+  )
 if (!is.null(lat_precision)) {
   print(lat_precision, row.names = FALSE)
   cat(sprintf("\nTotal valid latitude values: %s\n", 
               format(sum(lat_precision$N), big.mark = ",")))
 }
 
+##################
 # Analyze longitude
 cat("\n--- Longitude Precision Analysis ---\n")
-lon_precision <- analyze_decimal_precision(d311, "longitude")
+lon_precision <- analyze_decimal_precision(
+  DT             =  d311,
+  field_name     = "longitude",
+  verbose        = TRUE,
+  chart_dir      = chart_dir,       
+  generate_plots = TRUE   
+)
 if (!is.null(lon_precision)) {
   print(lon_precision, row.names = FALSE)
   cat(sprintf("\nTotal valid longitude values: %s\n", 
               format(sum(lon_precision$N), big.mark = ",")))
 }
 
+##################
 # Combined summary statistics
 cat("\n--- Summary Statistics ---\n")
 if (!is.null(lat_precision)) {
-  cat(sprintf("Latitude:
-              \n Min precision: %d,  Max precision: %d,  Median: %.2f", 
+  cat(sprintf("Latitude:\n Min precision: %d,  Max precision: %d,  Median: %.2f\n", 
               min(lat_precision$summary_precision$decimal_places),
               max(lat_precision$summary_precision$decimal_places),
-              mean(lat_precision$summary_precision$decimal_places)))
+              median(lat_precision$summary_precision$decimal_places)))  # Changed mean to median
 }
-
 if (!is.null(lon_precision)) {
-  if (!is.null(lat_precision)) {
-    cat(sprintf("Longitude:
-              \n Min precision: %d,  Max precision: %d,  Median: %.2f", 
-                min(lon_precision$summary_precision$decimal_places),
-                max(lon_precision$summary_precision$decimal_places),
-                mean(lon_precision$summary_precision$decimal_places)))
-  }  
+  cat(sprintf("Longitude:\n Min precision: %d,  Max precision: %d,  Median: %.2f\n", 
+              min(lon_precision$summary_precision$decimal_places),
+              max(lon_precision$summary_precision$decimal_places),
+              median(lon_precision$summary_precision$decimal_places)))
 }
 
+##################
 # Create a combined comparison table
 if (!is.null(lat_precision) && !is.null(lon_precision)) {
   cat("\n--- Side-by-side Comparison ---\n")
@@ -802,30 +813,52 @@ if (!is.null(lat_precision) && !is.null(lon_precision)) {
   
   comparison <- data.table(decimal_places = all_decimals)
   
-    # Merge latitude data
+  # Merge latitude data - reference the summary_precision data.table directly
   comparison <- merge(comparison, 
-                      lat_precision[, .(decimal_places, 
-                                        lat_count = N, 
-                                        lat_pct = pct)],
+                      lat_precision$summary_precision[, .(decimal_places, 
+                                                          lat_count = N, 
+                                                          lat_pct = pct)],
                       by = "decimal_places", all.x = TRUE)
   
-  # Merge longitude data
+  # Merge longitude data - reference the summary_precision data.table directly
   comparison <- merge(comparison,
-                      lon_precision[, .(decimal_places, 
-                                        lon_count = N, 
-                                        lon_pct = pct)],
+                      lon_precision$summary_precision[, .(decimal_places, 
+                                                          lon_count = N, 
+                                                          lon_pct = pct)],
                       by = "decimal_places", all.x = TRUE)
   
   # Replace NAs with 0
   comparison[is.na(lat_count), `:=`(lat_count = 0, lat_pct = 0.00)]
   comparison[is.na(lon_count), `:=`(lon_count = 0, lon_pct = 0.00)]
   
+  # Sort by decimal places
   setorder(comparison, decimal_places)
   
-  print(comparison, row.names = FALSE)
+  # Calculate cumulative percentages
+  comparison[, lat_cum_pct := cumsum(lat_pct)]
+  comparison[, lon_cum_pct := cumsum(lon_pct)]
+  
+  # Create total row
+  total_row <- data.table(
+    decimal_places = NA_integer_,  # Keep as integer initially
+    lat_count = sum(comparison$lat_count),
+    lat_pct = sum(comparison$lat_pct),
+    lat_cum_pct = NA_real_,
+    lon_count = sum(comparison$lon_count),
+    lon_pct = sum(comparison$lon_pct),
+    lon_cum_pct = NA_real_
+  )
+  
+  # Combine with total row
+  comparison_with_total <- rbindlist(list(comparison, total_row), use.names = TRUE)
+  
+  # Convert decimal_places to character BEFORE assigning "TOTAL"
+  comparison_with_total[, decimal_places := as.character(decimal_places)]
+  comparison_with_total[is.na(decimal_places), decimal_places := "TOTAL"]
+  
+  print(comparison_with_total, row.names = FALSE)
 }
-
-
+  
 #########################################################################
 
 cat("\n\n**********CHECKING FOR ALLOWABLE AND VALID VALUES**********\n")
