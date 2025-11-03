@@ -33,20 +33,30 @@ plot_annual_counts_with_projection <- function(
     total_days   <- ifelse(lubridate::leap_year(year_est), 366, 365)
     projected_value <- round(estimate_value * total_days / days_elapsed)
     
+    projection_row <- data.table(
+      year = as.integer(year_est),
+      count = as.integer(projected_value),
+      is_projection = TRUE,
+      proj_label = "Projected"
+    )
+    
     annual <- rbind(
       annual,
-      data.table(
-        year = year_est,
-        count = projected_value,
-        is_projection = TRUE
-      ),
-      fill = TRUE
+      projection_row,
+      fill = FALSE
     )
     setorder(annual, year)
     annual[, proj_label := fifelse(is_projection, "Projected", "Actual")]
   }
   
 
+  # # Right before: annual[, year := factor(year, levels = sort(unique(year)))]
+  # # Add these lines:
+  # print("Annual data before factor conversion:")
+  # print(annual)
+  # print(str(annual$year))
+  
+  
   # Ensure ordered factor year (important for stable ggplot handling)
   annual[, year := factor(year, levels = sort(unique(year)))]
   

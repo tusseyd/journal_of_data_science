@@ -124,7 +124,7 @@ credible insights from open data.
 The open data movement, emerging in the early twenty-first century, rests on
 the premise that freely accessible information can transform governance and
 society by fostering transparency, innovation, and civic engagement.
-A major milestone was the launch of the U.S.\ \textsc{Data.gov} portal in
+A major milestone was the launch of the U.S.\ \textsc{data.gov} portal in
 2009\,\citep{dataGov}, followed by the European Union’s
 \textsc{Open Data Portal} in 2012\,\citep{dataEU}, and the World Bank’s
 \textsc{Open Data} initiative in 2010\,\citep{dataWorldBank}.
@@ -144,7 +144,7 @@ fields such as public health\,\citep{cantor2018facets,shankar2021data}, urban
 development\,\citep{neves2020impacts}, and transportation\,\citep{gerte2019understanding}.
 Datasets on restaurant inspections, traffic collisions, and educational
 enrollment, among others, have informed both public policy design and civic
-applications. In particular, NYC’s 311 SR data have
+applications.  In particular, NYC’s 311 SR data have
 been used to optimize resource allocation and improve emergency response,
 demonstrating their operational value.
 
@@ -170,7 +170,7 @@ well-curated data in addressing public-health and crisis-response problems
 remain under-analyzed with respect to systematic quality assessment.
 
 This study addresses that gap through a case analysis of the NYC 311
-non-emergency Service Request dataset. Rather than attempting to cleanse or
+non-emergency SR dataset. Rather than attempting to cleanse or
 correct records, this investigation focuses on detecting and characterizing
 anomalies that may compromise analytical validity. This approach required
 custom software, iterative exploration, and methodological rigor to uncover
@@ -206,7 +206,7 @@ residents and misrouting for agencies. Initially limited to phone calls, the
 messaging, social media, and chat support. Over two decades, NYC~311 has
 evolved into a comprehensive data management platform processing more than
 \num[round-precision=0]{3} {million} SRs annually, with 2025 on track to set a
-record of \SI{3.48	}{million} SRs.
+record of  \SI[round-precision =1 ]{3.5}{million} SRs.   
 
 
 Beyond its operational function, NYC 311 data are instrumental in shaping
@@ -239,7 +239,7 @@ format. For efficiency in the R programming environment, the file was converted
 to the RDS format. Each record has 41~fields, with each row
 representing a single SR (e.g., complaint, issue, or request).
 
-\item Four date fields use \texttt{YYYY-MM-DD HH:MM:SS} format:\\
+\item Four date fields in \texttt{YYYY-MM-DD HH:MM:SS} format:\\
 \texttt{created\_date}, \texttt{resolution\_action\_updated\_date}, \texttt{due\_date},
  and \texttt{closed\_date}.
 
@@ -262,8 +262,6 @@ duplicates:\\
  developed by NOAA's National Geodetic Survey.)
 \end{itemize}
 
-Table~\ref{tab:big-six-agencies} summarizes the volume distribution across the
-largest contributing agencies.
 
 \begin{table}[tbp]
   \centering
@@ -286,8 +284,8 @@ largest contributing agencies.
 \end{table}
 
 The dataset contains 252 distinct \texttt{complaint\_type} categories with
-the top twenty complaints account for \SI[round-precision = 2]{68.46}{\percent}of all SRs. The
-complaint distribution is highly skewed, with a small number of issues
+the top twenty complaints account for \SI[round-precision = 2]{68.46}{\percent} 
+of all SRs. The complaint distribution is highly skewed, with a small number of issues
 dominating overall volume and a long tail of low-frequency complaints.
 
 Noise-related complaints are especially prominent, represented by eight
@@ -353,9 +351,8 @@ structural adjustments and content standardization:
   accuracy.
 
   \item \textbf{Validation of completeness:}
-  Rows are screened for mandatory fields. Missing or absent values—
-  recorded in multiple raw formats—are standardized to \texttt{NA} to
-  facilitate processing. 
+  Missing or absent values—recorded in multiple raw 
+  formats—are standardized to \texttt{NA} to facilitate processing. 
 
   \item \textbf{Field formatting:}
   Text fields are converted to uppercase for consistent matching, and
@@ -388,9 +385,8 @@ missing values. Observed forms include nulls, blank spaces, ``\texttt{NA}'',
 ``\texttt{N/A}'', and ``\texttt{<NA>}'’. Such variation complicates
 programming and analysis, increasing the likelihood of errors when filtering
 or aggregating records. To address this issue, all missing values were
-standardized to \texttt{NA}. Notably, nearly one-fifth 
-(\SI[round-precision = 2]{17.97}{\percent}) of the 
-dataset contains missing entries.
+standardized to \texttt{NA}. Notably, \SI[round-precision = 2]{27.86}{\percent}
+ of the raw dataset contains missing entries.
 
 \paragraph{Daylight Saving Time Issues}
 \label{par:dst}
@@ -434,11 +430,11 @@ The following example illustrates the problem:
 
   \item As a result, the 311 system records the SR as closed twenty minutes
   \emph{before} it was created, yielding a nonsensical negative duration of
-\num{-20}~minutes.
+\numint{-20}~minutes.
 \end{itemize}
 
 On average, \numint{86} SRs per year exhibit this systemic issue, 
-with a mean negative duration of \SI[round-precision = 2]{42.24}{\percent} . 
+with a mean negative duration of \SI[round-precision=2]{-42.24}{minutes} . 
 Although rare, these anomalies can disproportionately affect 
 time-sensitive complaint categories such as
 \texttt{drug\_activity}, \texttt{homeless\_assistance}, and
@@ -451,7 +447,7 @@ obscure true operational patterns.
 \label{par:precision}
 The \texttt{latitude}, \texttt{longitude}, and the duplicative \texttt{location}
 fields in the raw dataset exhibit substantial variation in numeric precision.
-The majority (\SI[round-precision = 2]{90.23}{\percent} ) of values 
+The vast majority of values 
 are recorded with thirteen decimal places, (e.g., 
 \texttt{latitude} = 40.7022221884127, \texttt{longitude} = -73.9126848719299), 
 representing
@@ -463,13 +459,13 @@ subset of \numint{212} records contains only integer longitude values
 with no decimals, highlighting inconsistent data-handling practices.
 
 Such heterogeneity suggests inconsistent data capture rather than deliberate
-standardization. Moreover, positional precision at fourteen decimal places
+standardization. Moreover, positional precision at thirteen decimal places
 implies spatial resolution at the molecular scale—far beyond any plausible
 accuracy for municipal sensors or geocoding. This represents excessive numeric
 precision rather than meaningful accuracy.
 
-For reference, the official New York City Borough Boundary (Water Included)
-dataset (\textsc{NYBBWI}), published by the Department of City Planning (DCP),
+For reference, the official New York City Borough Boundary\mbox{--}Water Included
+ (\textsc{NYBBWI}) dataset, published by the Department of City Planning (DCP),
 provides coordinates to six decimal places, corresponding to practical
 accuracy on the order of a few meters. In the present analysis, the original
 coordinates were retained without rounding but were evaluated against the
@@ -485,7 +481,7 @@ approximately \SI[round-precision=0]{100}{\meter}.
 Understanding the extent and distribution of missing data across fields is
 essential for evaluating the overall usability of the dataset. For example,
 assessing whether SRs were closed before their \texttt{due\_date} is largely
-infeasible, as more than \SI[round-precision=0]{99}{\percent} of entries in the
+infeasible, as more than \SI[round-precision=2]{99.67}{\percent} of entries in the
 \texttt{due\_date} field are blank.
 
 Additionally, field usage varies considerably across agencies. For instance,
@@ -613,8 +609,8 @@ examined further in Section~\ref{subsubsec:midnightnoonissues}.
 \label{subsubsec:duedate}
 The \texttt{due\_date} field appears almost exclusively in Department of
 Sanitation (\textsc{DSNY}) records and is populated in only about
-\SI[round-precision = 1]{0.3}{\percent} of cases. All values passed validation
-(no implausibly past or future dates), and no unusual patterns were seen.
+\SI[round-precision = 2]{0.05}{\percent} of cases. All values passed validation
+(no implausibly past or future dates), and no unusual patterns were observed.
 
 Sixteen cases were found where the \texttt{due\_date} precedes the
 \texttt{created\_date}—a nonsensical condition. These ranged from just over
@@ -626,9 +622,9 @@ avoid distorted deadline-performance analyses.
 \label{subsubsec:closeddate}
 Most records were compliant with respect to temporal bounds; none were set
 before 2003 or in the future. However, there is a clustering of 
-timestamps at exactly 
-midnight (\numint{1083862}; \SI[round-precision = 2]{6.77}{\percent}) 
-of non-missing \texttt{closed\_date}(s)) and exactly noon
+timestamps at exactly midnight 
+(\numint{1083862}; \SI[round-precision = 2]{6.77}{\percent}) 
+of  \texttt{closed\_date}(s)) and exactly noon
 (\numint{294817}; \SI[round-precision = 2]{1.84}{\percent}) representing
  a significant artifact, discussed further in
 Section~\ref{subsubsec:midnightnoonissues}. Additionally, \numint{45,296} entries
@@ -642,35 +638,40 @@ The \texttt{resolution\_action\_updated\_date} field records modifications or
 follow-up actions related to an SR. No values were found in implausible years.
 However, \numint{374974} entries
 (\SI[round-precision = 2]{2.34}{\percent}) occur before the corresponding
-\texttt{created\_date}. Nearly Nearly \SI[round-precision=0]{80}{\percent} occur within a day occur within a day (often
-within seconds), suggesting automated prepopulation during early processing
+\texttt{created\_date}. Nearly Nearly \SI[round-precision=0]{80}{\percent} of these
+premature dates occur within a day (often within seconds) 
+of the \texttt{created\_date}, 
+suggesting automated prepopulation during early processing
 pipeline stages rather than genuine updates.
 
 A more consequential irregularity concerns post-closure updates.
-Approximately (\SI[round-precision=0]{54}{\percent}) of updates occur after the
+Approximately \SI[round-precision=0]{54}{\percent} of updates occur after the
 \texttt{closed\_date}, which is reasonable. However, \numint{27810} entries occur
-more than 30~days—up to \numint{1593}~days (over four years)—post closure. A Pareto
+more than 30~days—and up to \numint{1593}~days (more than 
+four years)—post closure. A Pareto
 analysis indicates that over \SI[round-precision=0]{85}{\percent} of these very 
 late updates are concentrated in TLC, DPR, and DOHMH. Determining 
 whether such delays reflect administrative workflows or 
 erroneous logging warrants further attention.
 
-Finally, 91 records exhibit extremely late post-closure updates where
+Finally, \numint{91} records exhibit extremely late post-closure updates where
 invalid \texttt{closed\_date} values (i.e., 1899–1900) trigger an artificially large
 duration. This behavior is consistent with the well-known SQL default-date
-placeholder for null datetimes, and a similar behavior can arise in Microsoft Excel.
-These records should be excluded to prevent severe distortions in statistical
+placeholder for null datetimes (e.g. 1900-01-01), and a similar behavior 
+can arise in Microsoft Excel. These records should 
+be excluded to prevent severe distortions in statistical
 summaries, as illustrated in Table~\ref{tab:extreme-positive-days-agency}.
 
 \subsubsection{Daylight Saving Time (DST) Anomalies}
 \label{subsubsec:dst}
 As discussed in Section~\ref{par:dst}, DST introduces systemic measurement
-errors. The fallback adjustment yields implausible negative durations in
-averaging \num{86} SRs per year   mean negative duration of \SI{-42.24}{\minute}, 
+errors. The DST fall\mbox{-}back adjustment yields implausible negative durations in
+approximately \numint{86} SRs per year, causing a  mean negative duration of 
+\SI[round-precision=2]{-42.24}{minutes}, 
 while the spring-forward adjustment inflates durations for 
 approximately \numint{55000} SRs annually due to the missing 02{:}00–02{:}59 interval.
 
-Although offsets of \SI{+1}{\hour} or \SI{-42}{\minute} may seem minor, such
+Although offsets of +\numint{1} hour or \numint{-42} minutes may seem minor, such
 systematic distortions can notably affect performance metrics for
 time-sensitive complaints such as \texttt{Noise--Residential},
 \texttt{Animal--Abuse}, \texttt{Homeless~Person~Assistance}, and
@@ -688,6 +689,14 @@ fields reveals substantial peaks exactly at midnight (00{:}00{:}00) and noon
 and instead suggest automated batch operations closing or initializing large
 numbers of SRs at these times. Although not erroneous per se, such artifacts
 can distort hourly workload profiles and performance indicators.
+
+One plausible explanation for the midnight peak is that some records were
+originally stored with only a calendar date (e.g., \texttt{2024-09-11}) and
+later converted during submission or processing in the NYC~Open~Data pipeline.
+When a timestamp is absent, systems typically assign a default value of
+\texttt{00{:}00{:}00}, which would artificially inflate counts at midnight for 
+any date field so processed.
+
 
 As shown in Figure~\ref{fig:exacthours}, both created and closed timestamps
 display pronounced concentrations at these precise times, far exceeding random
@@ -739,12 +748,12 @@ affected SRs, negative durations average \SI[round-precision=1]{-118.7}{\day}, a
 that varies considerably by agency (Table~\ref{tab:negative-days-agency}).
 
 Within this group, \numint{115} SRs show \emph{extreme} negative durations due to default
-\texttt{closed\_date} values in 1899 and 1900—implying durations exceeding
-\num{-122}~years. Such outliers can dramatically skew summary statistics,
+\texttt{closed\_date} values in 1899 and 1900—implying negative durations exceeding
+\numint{-122}~years. Such outliers can dramatically skew summary statistics,
 making mean calculations unreliable without adjustment.
 
 Negative durations are overwhelmingly concentrated within the
-DOT which accounts for approximately (\SI[round-precision=0]{98}{\percent}) 
+DOT which accounts for approximately \SI[round-precision=0]{98}{\percent} 
 of all cases. This uneven distribution suggests that the
 anomaly reflects systemic or procedural issues rather than random noise. If
 left unaddressed, these errors would severely distort any downstream analysis
@@ -800,13 +809,14 @@ indicating agency-specific workflows or system-level artifacts.
 SR durations are highly right-skewed, with some cases extending months or
 years. Such extremes distort summary measures and hinder comparisons across
 agency workloads. Accordingly, a statistical analysis was undertaken to 
-determine appropriate lower-bound thresholds for identifying implausible 
-duration values.
+determine appropriate lower-bound thresholds for identifying implausible
+or suspicious small duration values.
 
 \textbf{Methodology.}
 Durations were truncated to plausible limits: 2~seconds (excluding
 zero- and one-second artifacts) to \numint{172800}~seconds (48~hours). This reduced
-the dataset from 15.3~to~10.0~million records (\SI[round-precision = 2]{64.9}{\percent}
+the dataset from \SI[round-precision=1]{15.3} to \SI[round-precision=1]{9.6} million 
+records (\SI[round-precision = 1]{64.9}{\percent}
 retained), and greatly shortened the long tail. Five complementary outlier
 screening methods were evaluated: standard deviation (SD), median absolute
 deviation (MAD), log-normal thresholds, percentile cutoffs (1–10\%), and
@@ -817,14 +827,15 @@ Truncation reduced the mean-to-median ratio from~53.7~to~5.2. SD,
 MAD, and IQR tests did not flag further anomalies. Log-normal and 
 percentile methods produced operationally reasonable limits. 
 The adopted rule—a log-normal $+3\sigma$ cutoff (\SI{27.95}{\second})—balanced 
-rigor and interpretability, identifying only \SI[round-precision = 2]{0.07}{\percent} 
+rigor and interpretability, identifying \SI[round-precision = 2]{0.07}{\percent} 
 of remaining records as outliers (\numint{14741} cases) with questionable or suspicious
 durations..
 
 \textbf{Summary.}
 Combining zero durations (\numint{387329}), one-second durations (\numint{1240}), and
 suspicious durations under 28~seconds (\numint{14471}), a total of \numint{403310}~SRs
-(\SI{2.6}{\percent} ) are statistically suspicious or operationally implausible.
+(\SI{2.6}{\percent}) are statistically suspicious or operationally implausible. This 
+was established as a cut\mbox{-}off for the duration analysis.
 
 \subsubsection{Positive Durations}
 \label{subsubsec:positivedurations}
@@ -908,7 +919,7 @@ would reduce size without reducing interpretability.
 
 \paragraph{\texttt{landmark} vs.~\texttt{street\_name}}
 Although \texttt{landmark} is intended to identify noteworthy locations
-such as parks, sport facilities, hospitals,  performance spaces, and airports, 
+such as parks, sport facilities, performance spaces, and airports, 
  \SI{59.7}{\percent} match the \texttt{street\_name} field and a large
  number also often differ only slightly (e.g., “Ninth Ave” vs. “9 Ave”), 
  suggesting both frequent misuse and functional redundancy.
@@ -926,44 +937,72 @@ the high duplication indicates substantial redundancy.
 \label{subsec:filesize}
 
 \paragraph{Removing Duplicates}
-Eliminating duplicate and near-duplicate fields could reduce dataset size by
-\SI[round-precision = 2]{38.29}{\percent}—a substantial gain. The following fields could
-be safely removed with minimal loss of information:
+Eliminating the identified duplicate and near-duplicate fields yields a
+reduction in dataset size of \SI[round-precision=2]{18.45}{\percent}—a
+meaningful gain. The analysis supports removing the following variables 
+with minimal loss of information:
 
 \begin{itemize}[left=1.5em]
   \item \texttt{agency\_name}: redundant with \texttt{agency}.
   \item \texttt{park\_borough}: identical to \texttt{borough}.
-  \item \texttt{location}: concatenation of coordinates; no added value.
- \item \texttt{cross\_street\_1/2} and \texttt{intersection\_street\_1/2}:
-\SI{83}{\percent} match rate; consider retaining a single authoritative pair.
+  \item \texttt{location}: a concatenation of \texttt{latitude} and \texttt{longitude} coordinates.
+  \item \texttt{cross\_street\_1/2} and \texttt{intersection\_street\_1/2}:
+  \SI{83}{\percent} match rate; consider retaining a single authoritative pair.
 \end{itemize}
 
-In addition, certain fields offer limited analytical value because they are
-sparsely populated (\textgreater 99\% blank). These include:
+\paragraph{Consideration: Sparse or Agency-Specific Fields}
+Several additional fields in the \textsc{NYC~311~SR} dataset are used only by
+one or two agencies and pertain to specific operational or infrastructure
+contexts such as taxi operations, sanitation facilities, or roadway features.
+Their limited usage and agency-specific semantics reduce their analytical
+value in a citywide framework. These fields are:
+
 
 \begin{center}
 \begin{minipage}{0.8\linewidth}
-\begin{tabularx}{\linewidth}{@{}lX lX@{}}
-$\bullet$ & \texttt{taxi\_company\_borough} &
-$\bullet$ & \texttt{road\_ramp} \\
-$\bullet$ & \texttt{vehicle\_type} &
-$\bullet$ & \texttt{due\_date} \\
-$\bullet$ & \texttt{bridge\_highway\_direction} &
-$\bullet$ & \texttt{bridge\_highway\_name} \\
-$\bullet$ & \texttt{bridge\_highway\_segment} &
-$\bullet$ & \texttt{taxi\_pick\_up\_location} \\
-\end{tabularx}
+\begin{multicols}{2}
+\begin{itemize}[leftmargin=1.5em]
+  \item[\textbullet{}] \texttt{taxi\_company\_borough}
+  \item[\textbullet{}] \texttt{taxi\_pick\_up\_location}
+  \item[\textbullet{}] \texttt{vehicle\_type}
+  \item[\textbullet{}] \texttt{facility\_type}
+  \item[\textbullet{}] \texttt{due\_date}
+  \item[\textbullet{}] \texttt{bridge\_highway\_direction}
+  \item[\textbullet{}] \texttt{bridge\_highway\_segment}
+  \item[\textbullet{}] \texttt{road\_ramp}
+\end{itemize}
+\end{multicols}
 \end{minipage}
 \end{center}
 
-Although sparse overall, a 1\% fill rate still corresponds to roughly
-\numint{160000} records in this 16~million-row dataset, suggesting that agency-specific analyses
-may still benefit from these fields. A practical alternative would be to store
-such variables in agency-level tables.
+\smallskip
+\noindent
+\textit{Note:} Field completion rates range from 
+\SI{0.05}{\percent} to \SI{1.31}{\percent} of all service requests.
+
+
+It is worth noting that although these attributes are extremely sparse, 
+even a 1\% fill rate represents a large number of records given a
+16~million-row dataset, implying that they may retain some value for
+agency-specific investigations. A practical compromise would be to relocate
+such variables into separate, agency-level supplemental tables, thereby
+reducing the size and complexity of the citywide integrated dataset while
+preserving potentially relevant information for specialized analyses.
+
+\paragraph{Consideration: \texttt{unique\_key}}
+The \texttt{unique\_key} field also warrants consideration in the context of
+file-size optimization. This eight-digit identifier uniquely distinguishes each
+record and is valuable for deduplication and joining datasets from multiple
+sources. However, in the current CSV\mbox{-}based flat table, its
+functional value is limited to record referencing rather than analytical
+insight. For most statistical and visualization purposes, the field
+contributes minimally and may be omitted from derived analytical datasets,
+while retained in reference or archival versions for traceability.
+
 
 \paragraph{Field Encoding}
 Further reductions can be achieved through categorical encoding. Rather than
-storing verbose text strings such as
+storing verbose text strings such as \texttt{complaint\_type} 
 “\texttt{REQUEST LARGE BULKY ITEM COLLECTION}” \numint{632148} times, numeric or symbolic
 codes could be used instead. This approach reduces storage overhead, speeds
 processing, and eliminates invalid category variants.
@@ -1042,7 +1081,7 @@ from a reactive burden into a routine operational safeguard.
 Efficient storage and representation are vital for large-scale government
 datasets. In the NYC~311 case, duplicate or near-duplicate fields inflated file
 size without adding analytic value; removing them could reduce storage needs by
-39.5\% while maintaining utility. Encoding categorical variables in
+\SI[round-precision = 2]{18.45}{\percent} while maintaining utility. Encoding categorical variables in
 standardized or numeric formats further reduces space, prevents
 inconsistencies, and improves performance. Such optimization reduces costs and
 improves reproducibility, especially for datasets widely shared with the
@@ -1053,8 +1092,8 @@ public.
 
 Accurate metadata are essential for dataset usability. In the NYC~311 case, the
 Data Dictionary contained missing, incomplete, and outdated domain definitions.
-Data Dictionaries should specify types, valid value domains, and clear field
-semantics, and be reviewed regularly to reflect structural or operational
+Data Dictionaries should specify data types, valid domains, and clear field
+semantics. They should be reviewed regularly to reflect structural or operational
 changes. Ideally such valid domain enforcement would be present in
 software systems incorporated via drop down menus, lookup table, etc.
 Consistent maintenance supports interpretability and reinforces trust
@@ -1088,8 +1127,8 @@ transparency fosters trust, accountability, and collaborative improvement.
 \label{subsec:principle7}
 
 Government open data should be distributed in formats that balance
-accessibility with computational efficiency. Flat CSV files remain
-widely compatible but become inefficient as datasets scale. Agencies should
+accessibility with computational efficiency. While flat CSV files remain
+widely compatible, they become inefficient as datasets scale. Agencies should
 therefore offer complementary access options such as structured APIs and
 columnar formats (e.g., Parquet, Arrow) that support high-volume analytics.
 Leveraging existing enterprise infrastructure enables full access without

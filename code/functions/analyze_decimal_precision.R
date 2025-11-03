@@ -72,7 +72,6 @@ analyze_decimal_precision <- function(
     }
   }
   
-  # # === NEW PARETO CHART CREATION ===
   # === NEW PARETO CHART CREATION ===
   if (generate_plots && nrow(agency_summary) > 0) {
     # Default chart directory if missing

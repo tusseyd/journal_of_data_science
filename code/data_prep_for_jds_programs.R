@@ -214,7 +214,7 @@ valid_date_columns <- c(
 cat("\nReading in raw 311 Service Request data... \n")
 main_data_path <- file.path(raw_data_dir, main_data_file)
 
-# Example: ensure date columns come in as text
+# When first reading the file
 raw_data <- fread(
   main_data_path,
   nThread       = parallel::detectCores() - 1,
@@ -223,6 +223,7 @@ raw_data <- fread(
   showProgress  = TRUE,
   colClasses    = "character"
 )
+
 
 # Make copy for troubleshooting purposes.
 copy_raw_data <- raw_data
@@ -510,7 +511,7 @@ cat(sprintf(
   "     USPS_zipcodes.rds | written: %d | read back: %d | %s\n",
   rows_written, rows_read, status
 ))
- 
+
 ################################################################################
 # Store the program end time and calculate the duration
 programStop <- as.POSIXct(Sys.time())

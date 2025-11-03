@@ -6,13 +6,13 @@ main_data_file <-
  
 # Boolean flag. TRUE to redirect console output to text file
 # FALSE to display console outpx`t on the screen
-enable_sink <- FALSE      
+enable_sink <- TRUE      
  
 #The "as of" date in "YYYY-MM-DD" format
-projection_date <- "2025-10-29"   
+projection_date <- "2025-10-31"   
 
 #Number of SRs for the year through the projection_date  
-projection_SR_count <- 2878716   
+projection_SR_count <- 2912268  
 
 # Okabe-Ito palette for colorblind safe 
 palette(c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
@@ -224,7 +224,7 @@ num_columns_d311 <- ncol(d311)
 stopifnot("unique_key" %in% names(d311))
 setindex(d311, unique_key)   # no reorder; speeds joins/subsets on unique_key
 
-#copy_raw_data <- d311
+copy_raw_data <- d311
 
 table(lubridate::year(d311$closed_date)) 
 
@@ -304,6 +304,7 @@ summary(attr(d311$created_date, "tzone"))
 
 # Plot yearly growth of 311 SRs.
 message("\nCreating year plot and statistics.")
+
 yearly_bar_chart <- plot_annual_counts_with_projection(
   DT = d311,
   created_col = "created_date",
@@ -352,23 +353,28 @@ cat("\n\n********** Missing entires by column **********")
 
 #########################################################################
 # --- Per-column completeness analysis (percent filled) ----------------------
+message("\nCounting missing entries by field.")
+
 na_counts <- vapply(d311, function(x) sum(is.na(x)), integer(1L))
-num_rows_d311 <- nrow(d311)
+
 completenessPerColumn <- data.table(
   field        = names(na_counts),
   NA_count     = unname(na_counts),
   filled_count = num_rows_d311 - unname(na_counts)
 )
 completenessPerColumn[, `:=`(
-  pct_missing = round(100 * NA_count / num_rows_d311, 2),
-  pct_complete = round(100 * filled_count / num_rows_d311, 2)
+  pct_missing = round(100 * NA_count / num_rows_d311, 4),
+  pct_of_total = round(100 * filled_count / num_rows_d311, 4)
 )]
+
 # Sort ascending so lowest completeness appears first (left side of chart)
-setorder(completenessPerColumn, pct_complete)
+setorder(completenessPerColumn, pct_of_total)
+
 # Apply factor levels based on that order
 completenessPerColumn[, field := factor(field, levels = field)]
+
 cat("\nNumber and % COMPLETE entries per column:\n")
-print(completenessPerColumn[, .(field, filled_count, pct_complete)], row.names = FALSE)
+print(completenessPerColumn[, .(field, filled_count, pct_of_total)], row.names = FALSE)
 
 # --- Overall dataset completeness summary ---
 total_cells <- num_rows_d311 * ncol(d311)
@@ -388,7 +394,7 @@ cat(sprintf("Percent complete: %s%%\n", overall_pct_complete))
 create_basic_bar_chart(
   DT            = completenessPerColumn,
   x_col         = "field",
-  y_col         = "pct_complete",
+  y_col         = "pct_of_total",
   title         = "Data Completeness by Field",
   use_color_groups = TRUE,
   horizontal = TRUE,
@@ -452,7 +458,7 @@ setorder(field_usage_summary_dt, -total)
 pct_cols <- paste0(agency_cols, "_pct")
 field_usage_summary_dt[
   , (pct_cols) := lapply(.SD, function(x) fifelse(total > 0, 
-                                                round(100 * x / total, 1), 0)),
+                                                round(100 * x / total, 5), 0)),
   .SDcols = agency_cols
 ]
 
