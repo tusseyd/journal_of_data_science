@@ -73,41 +73,35 @@ York City 311 Service Request Dataset}
 \runtitle{Searching for Data Anomalies}
 
 \author[1]{\inits{D.}\fnms{David}~\snm{Tussey}}
-\address[1]{\institution{NYC \textsc{DoITT}}, \cny{USA}}
+\author[2]{\inits{J.}\fnms{Jun}~\snm{Yan}}
+\address[1]{\institution{NYC DoITT}, \cny{USA}}
+\address[2]{Department of Statistics,
+  \institution{University of Connecticut}, \cny{USA}}
 
 \begin{abstract}
 The open data movement has transformed governance by promoting transparency,
 innovation, and public engagement. Since the 2012 Open Data Law, the City of
 New York (NYC) has been a leader, publishing over  
 \num[round-precision=0]{3000}
-datasets through its Open Data portal. Yet the value 
+datasets through its Open Data portal. But the value 
 of open data depends on its quality—a topic often overlooked in the literature.
-
 This paper presents a case study of anomaly detection within the popular NYC
-311 Service Request (SR) dataset. The analysis reveals that
-uncritical reliance on open datasets can yield misleading results.
-Detecting these anomalies required custom software and iterative
-exploration to uncover patterns not immediately evident.
-
-Rather than cleansing the data, this study characterizes them, while emphasizing
+311 Service Request (SR) dataset. Rather than cleansing the data, 
+this study characterizes them, while emphasizing
 that some anomalies cannot be judged invalid without context. The findings 
 highlight the analytical rigor and interpretive judgment necessary to ensure
-credible insights from open data.
+credible insights from open data. Additionally, it reveals that
+uncritical reliance on open datasets can lead to 
+misleading or incorrect results.
 \end{abstract}
 
 \begin{keywords}
-  \kwd{Data anomalies}
-  \kwd{Anomaly detection}
-  \kwd{Data quality}
-  \kwd{Data validation}
-  \kwd{Data curation}
   \kwd{Data cleansing}
-  \kwd{Data science}
-  \kwd{NYC Open Data}
-  \kwd{Smart city}
-  \kwd{Transparency}
-  \kwd{Government data}
-\end{keywords}
+  \kwd{Data curation}
+  \kwd{Data quality}
+   \kwd{Data science}
+   \kwd{Data validation}
+ \end{keywords}
 
 \end{frontmatter}
 
@@ -124,7 +118,7 @@ credible insights from open data.
 The open data movement, emerging in the early twenty-first century, rests on
 the premise that freely accessible information can transform governance and
 society by fostering transparency, innovation, and civic engagement.
-A major milestone was the launch of the U.S.\ \textsc{data.gov} portal in
+A major milestone was the launch of the US\ \textsc{data.gov} portal in
 2009\,\citep{dataGov}, followed by the European Union’s
 \textsc{Open Data Portal} in 2012\,\citep{dataEU}, and the World Bank’s
 \textsc{Open Data} initiative in 2010\,\citep{dataWorldBank}.
@@ -269,7 +263,7 @@ duplicates:\\
   \label{tab:big-six-agencies}
   \begin{tabular}{lrr}
     \toprule
-    \textbf{Agency} & \textbf{Abbreviation} & \textbf{Share of \textsc{SRs}} \\
+    Agency & Abbreviation & Share of \textsc{SRs} \\
     \midrule
     New York Police Department & NYPD & 43\% \\
     Housing Preservation and Development & HPD & 19\% \\
@@ -278,7 +272,7 @@ duplicates:\\
     Department of Environmental Protection & DEP & 5\% \\
     Department of Parks and Recreation & DPR & 4\% \\
     \midrule
-    \textbf{Total (Top Six)} &  & \textbf{90\%} \\
+    Total (Top Six) &  & 90\% \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -334,27 +328,27 @@ modifications to facilitate efficient processing. These steps include both
 structural adjustments and content standardization:
 
 \begin{itemize}[left=1.5em]
-  \item \textbf{Standardization of structure:}
+  \item Standardization of structure:
   Column names are normalized for ease of reference, and the raw
   \texttt{.csv} file is converted into the more efficient \texttt{.rds} format
   to improve performance.
 
-  \item \textbf{Date handling:}
+  \item Date handling:
   All date fields are converted to the \texttt{POSIXct} class and aligned
   to the \textit{America/New\_York} time zone, enabling accurate
   treatment of Daylight Saving Time (DST) effects (discussed in
   Section~\ref{par:dst}).
 
-  \item \textbf{Agency harmonization:}
+  \item Agency harmonization:
   Several agencies were renamed during the study period; records were
   consolidated under their current agency designations for consistency and
   accuracy.
 
-  \item \textbf{Validation of completeness:}
+  \item Validation of completeness:
   Missing or absent values—recorded in multiple raw 
   formats—are standardized to \texttt{NA} to facilitate processing. 
 
-  \item \textbf{Field formatting:}
+  \item Field formatting:
   Text fields are converted to uppercase for consistent matching, and
   numeric fields are explicitly cast to the appropriate type.
 \end{itemize}
@@ -500,7 +494,7 @@ lower completeness rates.
 \small
 \begin{tabular}{l r r}
 \toprule
-\textbf{Field} & \textbf{Filled count} & \textbf{Completeness (\%)} \\
+Field & Filled count & Completeness (\%) \\
 \midrule
 \texttt{taxi\_company\_borough} & \num[round-mode=none]{8564} & 0.05 \\
 \texttt{due\_date} & \num[round-mode=none]{52346} & 0.33 \\
@@ -597,29 +591,28 @@ between these events. The NYC~311 dataset includes four such fields:
 \texttt{closed\_date}. In practice, numerous records violate these expected
 relationships, complicating both analysis and interpretation.
 
-\subsubsection{Created Date}
-\label{subsubsec:createddate}
+\paragraph{Created Date}
+\label{par:createddate}
 All \texttt{created\_date} values were checked to ensure that none were set in
 the future or before the inception of the 311 system (circa~2003); all records
 were compliant. However, a notable clustering of timestamps occurs at exactly
 midnight (\numint{14409} cases) and exactly noon (\numint{31872} cases), an anomaly
-examined further in Section~\ref{subsubsec:midnightnoonissues}.
+examined further in Section~\ref{par:midnightnoonissues}.
 
-\subsubsection{Due Date Anomalies}
-\label{subsubsec:duedate}
+\paragraph{Due Date Anomalies}
+\label{par:duedate}
 The \texttt{due\_date} field appears almost exclusively in Department of
 Sanitation (\textsc{DSNY}) records and is populated in only about
 \SI[round-precision = 2]{0.05}{\percent} of cases. All values passed validation
 (no implausibly past or future dates), and no unusual patterns were observed.
-
 Sixteen cases were found where the \texttt{due\_date} precedes the
 \texttt{created\_date}—a nonsensical condition. These ranged from just over
 one year early to more than two years early. While these anomalies are few and
 unlikely to materially affect aggregate results, they must be excluded to
 avoid distorted deadline-performance analyses.
 
-\subsubsection{Closed Date}
-\label{subsubsec:closeddate}
+\paragraph{Closed Date}
+\label{par:closeddate}
 Most records were compliant with respect to temporal bounds; none were set
 before 2003 or in the future. However, there is a clustering of 
 timestamps at exactly midnight 
@@ -632,8 +625,8 @@ show \texttt{closed\_date}(s) preceding \texttt{created\_date}(s); these
 negative durations are examined in detail in
 Subsection~\ref{subsec:duration}.
 
-\subsubsection{Resolution Action Updated Date}
-\label{subsubsec:resolutionupdatedate}
+\paragraph{Resolution Action Updated Date}
+\label{par:resolutionupdatedate}
 The \texttt{resolution\_action\_updated\_date} field records modifications or
 follow-up actions related to an SR. No values were found in implausible years.
 However, \numint{374974} entries
@@ -643,7 +636,6 @@ premature dates occur within a day (often within seconds)
 of the \texttt{created\_date}, 
 suggesting automated prepopulation during early processing
 pipeline stages rather than genuine updates.
-
 A more consequential irregularity concerns post-closure updates.
 Approximately \SI[round-precision=0]{54}{\percent} of updates occur after the
 \texttt{closed\_date}, which is reasonable. However, \numint{27810} entries occur
@@ -653,7 +645,6 @@ analysis indicates that over \SI[round-precision=0]{85}{\percent} of these very
 late updates are concentrated in TLC, DPR, and DOHMH. Determining 
 whether such delays reflect administrative workflows or 
 erroneous logging warrants further attention.
-
 Finally, \numint{91} records exhibit extremely late post-closure updates where
 invalid \texttt{closed\_date} values (i.e., 1899–1900) trigger an artificially large
 duration. This behavior is consistent with the well-known SQL default-date
@@ -662,43 +653,38 @@ can arise in Microsoft Excel. These records should
 be excluded to prevent severe distortions in statistical
 summaries, as illustrated in Table~\ref{tab:extreme-positive-days-agency}.
 
-\subsubsection{Daylight Saving Time (DST) Anomalies}
-\label{subsubsec:dst}
+\paragraph{Daylight Saving Time (DST) Anomalies}
+\label{par:dst}
 As discussed in Section~\ref{par:dst}, DST introduces systemic measurement
 errors. The DST fall\mbox{-}back adjustment yields implausible negative durations in
 approximately \numint{86} SRs per year, causing a  mean negative duration of 
 \SI[round-precision=2]{-42.24}{minutes}, 
 while the spring-forward adjustment inflates durations for 
-approximately \numint{55000} SRs annually due to the missing 02{:}00–02{:}59 interval.
-
-Although offsets of +\numint{1} hour or \numint{-42} minutes may seem minor, such
+approximately \numint{55000} SRs annually due to the missing 02{:}00–02{:}59 
+interval. Although offsets of +\numint{1} hour or \numint{-42} minutes may seem minor, such
 systematic distortions can notably affect performance metrics for
 time-sensitive complaints such as \texttt{Noise--Residential},
 \texttt{Animal--Abuse}, \texttt{Homeless~Person~Assistance}, and
 \texttt{Drug~Activity}. These artifacts underscore the importance of
 properly accounting for DST when computing SR durations.
 
-\subsubsection{Midnight and Noon: Creation and Closure Issues}
-\label{subsubsec:midnightnoonissues}
+\paragraph{Midnight and Noon: Creation and Closure Issues}
+\label{par:midnightnoonissues}
 SR activity generally follows a typical diurnal pattern, with most requests
-created during daytime hours.
-
-Closer examination of the \texttt{created\_date} and \texttt{closed\_date}
+created during daytime hours. Closer examination of 
+the \texttt{created\_date} and \texttt{closed\_date}
 fields reveals substantial peaks exactly at midnight (00{:}00{:}00) and noon
 (12{:}00{:}00). These alignments are unlikely to result from human activity
 and instead suggest automated batch operations closing or initializing large
 numbers of SRs at these times. Although not erroneous per se, such artifacts
 can distort hourly workload profiles and performance indicators.
-
 One plausible explanation for the midnight peak is that some records were
 originally stored with only a calendar date (e.g., \texttt{2024-09-11}) and
 later converted during submission or processing in the NYC~Open~Data pipeline.
 When a timestamp is absent, systems typically assign a default value of
 \texttt{00{:}00{:}00}, which would artificially inflate counts at midnight for 
-any date field so processed.
-
-
-As shown in Figure~\ref{fig:exacthours}, both created and closed timestamps
+any date field so processed. As shown in 
+Figure~\ref{fig:exacthours}, both created and closed timestamps
 display pronounced concentrations at these precise times, far exceeding random
 expectation and surpassing a \(+3\sigma\) threshold.
 
@@ -729,9 +715,7 @@ The lifespan of an SR—its \emph{duration}—is widely used as a performance
 metric for NYC agencies. Duration informs assessments of equity in service
 provision across neighborhoods and boroughs, and serves as a proxy for agency
 responsiveness in formal reporting. Given this importance, SR duration
-warrants close scrutiny.
-
-In principle, duration is the elapsed time between
+warrants close scrutiny. In principle, duration is the elapsed time between
 \texttt{created\_date} and \texttt{closed\_date}. Given the prevalence of
 automated workflows, these timestamps might be expected to be populated
 programmatically in response to user actions—reducing potential errors and
@@ -740,18 +724,16 @@ dataset includes several anomalies in these fields that would ordinarily be
 prevented by robust automation, raising concerns about the reliability of
 duration as a performance indicator.
 
-\subsubsection{Negative Durations}
-\label{subsubsec:negativedurations}
+\paragraph{Negative Durations}
+\label{par:negativedurations}
 A total of \numint{45296} SRs exhibit a \texttt{closed\_date} that precedes the
 \texttt{created\_date}, producing nonsensical negative durations. Across all
 affected SRs, negative durations average \SI[round-precision=1]{-118.7}{\day}, a nontrivial distortion
 that varies considerably by agency (Table~\ref{tab:negative-days-agency}).
-
 Within this group, \numint{115} SRs show \emph{extreme} negative durations due to default
 \texttt{closed\_date} values in 1899 and 1900—implying negative durations exceeding
 \numint{-122}~years. Such outliers can dramatically skew summary statistics,
 making mean calculations unreliable without adjustment.
-
 Negative durations are overwhelmingly concentrated within the
 DOT which accounts for approximately \SI[round-precision=0]{98}{\percent} 
 of all cases. This uneven distribution suggests that the
@@ -761,92 +743,79 @@ relying on duration metrics.
 
 \begin{table}[tbp]
 \centering
-\caption{Negative Duration (days) by agency}
+\caption{Negative Duration (days) by agency.}
 \label{tab:negative-days-agency}
-\begin{tabular}{l
-  S[table-format=5.0, round-mode=places, round-precision=0]
-  S[table-format=3.2]
-  S[table-format=3.2]
-  S[table-format=3.2]
-  S[table-format=3.2]
-  S[table-format=3.2]
-  S[table-format=3.2]}
+\begin{tabular}{
+  l
+  S[table-format=6.0, round-mode=places, round-precision=0]
+  S[table-format=-3.2]
+  S[table-format=-3.2]
+  S[table-format=-3.2]
+  S[table-format=-3.2]
+  S[table-format=-3.2]
+  S[table-format=-3.2]
+}
 \toprule
-\textbf{Agency} &
-\textbf{N} &
-\textbf{Min} &
-\textbf{Q1} &
-\textbf{Median} &
-\textbf{Q3} &
-\textbf{Max} &
-\textbf{Mean} \\
+Agency & {N} & {Min} & {Q1} & {Median} & {Q3} & {Max} & {Mean} \\
 \midrule
-NYPD  & 431   & -0.08  & -0.06  & -0.02  & -0.01  & 0.00   & -0.03 \\
-HPD   & 320   & -1.27  & -0.48  & -0.37  & -0.29  & 0.00   & -0.37 \\
+NYPD  & 431   & -0.08  & -0.06  & -0.02  & -0.01  &  0.00  & -0.03 \\
+HPD   & 320   & -1.27  & -0.48  & -0.37  & -0.29  &  0.00  & -0.37 \\
 DOB   & 37    & -0.84  & -0.53  & -0.48  & -0.39  & -0.08  & -0.47 \\
-DOT   & 44143 & -378.00 & -5.00 & -2.96 & -1.14 & 0.00 & -5.51 \\
+DOT   & 44143 & -378.00 & -5.00 & -2.96 & -1.14 &  0.00 & -5.51 \\
 DSNY  & 18    & -27.52 & -4.99 & -4.97 & -1.88 & -1.50 & -6.44 \\
 DEP   & 228   & -548.76 & -405.59 & -316.21 & -210.58 & -1.22 & -292.36 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsection{Zero and One-Second Durations}
-\label{subsubsec:zerodurations}
+
+
+\paragraph{Zero and One-Second Durations}
+\label{par:zerodurations}
 A more prevalent anomaly occurs when \texttt{closed\_date} and
 \texttt{created\_date} share the exact same timestamp, producing zero-duration
 SRs. A total of \numint{387329} SRs (\SI[round-precision = 2]{2.5}{\percent}) fall
 into this category. In addition, \numint{3460} SRs close within one second of their
 creation. While not logically impossible, these near-instantaneous resolutions
 are highly improbable. Moreover, \SI[round-precision = 0]{81}{\percent} 
-of such cases originate
-from just three agencies (DOHMH, DOT, and Department of Buildings (DOB), 
+of such cases originate from just three 
+agencies (DOHMH, DOT, and Department of Buildings (DOB), 
 indicating agency-specific workflows or system-level artifacts.
 
-\subsubsection{Suspicious Durations}
-\label{subsubsec:suspiciousdurations}
-\textbf{Rationale.}
-SR durations are highly right-skewed, with some cases extending months or
+\paragraph{Suspicious Durations}
+\label{par:suspiciousdurations}
+The SR durations are highly right-skewed, with some cases extending months or
 years. Such extremes distort summary measures and hinder comparisons across
 agency workloads. Accordingly, a statistical analysis was undertaken to 
 determine appropriate lower-bound thresholds for identifying implausible
-or suspicious small duration values.
-
-\textbf{Methodology.}
-Durations were truncated to plausible limits: 2~seconds (excluding
+or suspicious small duration values. Durations were 
+truncated to plausible limits: 2~seconds (excluding
 zero- and one-second artifacts) to \numint{172800}~seconds (48~hours). This reduced
 the dataset from \SI[round-precision=1]{15.3} to \SI[round-precision=1]{9.6} million 
 records (\SI[round-precision = 1]{64.9}{\percent}
 retained), and greatly shortened the long tail. Five complementary outlier
 screening methods were evaluated: standard deviation (SD), median absolute
 deviation (MAD), log-normal thresholds, percentile cutoffs (1–10\%), and
-interquartile range (IQR).
-
-\textbf{Findings.}
-Truncation reduced the mean-to-median ratio from~53.7~to~5.2. SD, 
+interquartile range (IQR). Truncation reduced 
+the mean-to-median ratio from~53.7~to~5.2. SD, 
 MAD, and IQR tests did not flag further anomalies. Log-normal and 
 percentile methods produced operationally reasonable limits. 
 The adopted rule—a log-normal $+3\sigma$ cutoff (\SI{27.95}{\second})—balanced 
 rigor and interpretability, identifying \SI[round-precision = 2]{0.07}{\percent} 
 of remaining records as outliers (\numint{14741} cases) with questionable or suspicious
-durations..
-
-\textbf{Summary.}
-Combining zero durations (\numint{387329}), one-second durations (\numint{1240}), and
+durations. Combining zero durations (\numint{387329}), one-second durations (\numint{1240}), and
 suspicious durations under 28~seconds (\numint{14471}), a total of \numint{403310}~SRs
 (\SI{2.6}{\percent}) are statistically suspicious or operationally implausible. This 
 was established as a cut\mbox{-}off for the duration analysis.
 
-\subsubsection{Positive Durations}
-\label{subsubsec:positivedurations}
+\paragraph{Positive Durations}
+\label{par:positivedurations}
 While a positive duration is not inherently erroneous, a subset of SRs exhibit
 extremely long lifespans. A total of \numint{139628} SRs fall into the
 \emph{large-duration} category (1–2~years). These are concentrated in DPR,
 DOHMH, and the Economic Development Corporation (\textsc{EDC}), which together
 account for (\SI[round-precision=0]{94}{\percent}) of such cases. The average length was
-\numint{1099}~days.
-
-At the more severe end, \numint{1240} SRs qualify as \emph{extreme} positive
+\numint{1099}~days. At the more severe end, \numint{1240} SRs qualify as \emph{extreme} positive
 durations (\(>5\)~years). Nearly all (\SI[round-precision=0]{94}{\percent})  of these
 extreme positive durations occurred within DPR. The average of this group
 was \numint{1826}~days, with a maximum of \numint{2074}~days (5.5~years).
@@ -865,8 +834,7 @@ S[table-format=4.0]
 S[table-format=4.0]
 S[table-format=4.0]}
 \toprule
-\textbf{Agency} & \textbf{N} & \textbf{Min} & \textbf{Q1} &
-\textbf{Median} & \textbf{Q3} & \textbf{Max} & \textbf{Mean} \\
+Agency & {N} & {Min} & {Q1} & {Median} & {Q3} & {Max} & {Mean} \\
 \midrule
 DEP & 9 & 1879 & 1924 & 1939 & 1986 & 2075 & 1960 \\
 DOT & 8 & 1827 & 1883 & 1901 & 1934 & 2047 & 1914 \\
@@ -1034,9 +1002,8 @@ public trust in open-data initiatives. Together, they provide a coherent
 framework for sustainable, high-quality open-data governance across both
 organizational and technical boundaries.
 
-\subsection{Principle~1: Establish Cross-Organizational Consistency}
-\label{subsec:principle1}
-
+\paragraph{Principle~1: Establish Cross-Organizational Consistency}
+\label{par:principle1}
 A persistent challenge in government open data is the lack of harmonization
 among agencies in field definitions, formats, usage conventions, and value
 domains. Such inconsistencies distort analyses and impede cross-agency
@@ -1054,9 +1021,8 @@ monitor data quality, and ensure that available validation tools are actively
 used. Without such oversight, even well-designed checks may be inconsistently
 applied, limiting the credibility and consistency of open data.
 
-\subsection{Principle~2: Ensure Data Entry Accuracy}
-\label{subsec:principle2}
-
+\paragraph{Principle~2: Ensure Data Entry Accuracy}
+\label{par:principle2}
 Data accuracy and validity are prerequisites for any useful open dataset. In
 the case of NYC~311, anomalies such as invalid ZIP codes and illogical dates
 (e.g., \texttt{closed\_date}~\textless~\texttt{created\_date}) highlight the
@@ -1075,9 +1041,8 @@ systematic error. Examples include:
 Embedding checks directly in submission workflows turns data quality assurance
 from a reactive burden into a routine operational safeguard.
 
-\subsection{Principle~3: Optimize Storage Efficiency}
-\label{subsec:principle3}
-
+\paragraph{Principle~3: Optimize Storage Efficiency}
+\label{par:principle3}
 Efficient storage and representation are vital for large-scale government
 datasets. In the NYC~311 case, duplicate or near-duplicate fields inflated file
 size without adding analytic value; removing them could reduce storage needs by
@@ -1087,9 +1052,8 @@ inconsistencies, and improves performance. Such optimization reduces costs and
 improves reproducibility, especially for datasets widely shared with the
 public.
 
-\subsection{Principle~4: Maintain and Update Data Dictionaries}
-\label{subsec:principle4}
-
+\paragraph{Principle~4: Maintain and Update Data Dictionaries}
+\label{par:principle4}
 Accurate metadata are essential for dataset usability. In the NYC~311 case, the
 Data Dictionary contained missing, incomplete, and outdated domain definitions.
 Data Dictionaries should specify data types, valid domains, and clear field
@@ -1099,9 +1063,8 @@ software systems incorporated via drop down menus, lookup table, etc.
 Consistent maintenance supports interpretability and reinforces trust
 in open-data resources.
 
-\subsection{Principle~5: Automate Ongoing Quality Assurance Processes}
-\label{subsec:principle5}
-
+\paragraph{Principle~5: Automate Ongoing Quality Assurance Processes}
+\label{par:principle5}
 Automated validation and quality-assurance methods markedly enhance dataset
 reliability by detecting anomalies in real time. For example, pronounced spikes
 in record creation and closure at midnight or noon suggest batch processes that
@@ -1113,9 +1076,8 @@ numeric data and language models for text. These capabilities strengthen the
 foundation for analytics and machine learning by ensuring training data remain
 fair, accurate, and actionable.
 
-\subsection{Principle~6: Ensure Data Transparency}
-\label{subsec:principle6}
-
+\paragraph{Principle~6: Ensure Data Transparency}
+\label{par:principle6}
 Transparency requires that datasets be not only accessible but also
 interpretable. Clear metadata should describe dataset structure,
 transformations, limitations, and intended uses. Equally important is timely
@@ -1123,9 +1085,8 @@ communication about data-quality issues, including notification when systemic
 anomalies are detected and documentation of remediation steps. Proactive
 transparency fosters trust, accountability, and collaborative improvement.
 
-\subsection{Principle~7: Foster Interoperability and Scalable Access}
-\label{subsec:principle7}
-
+\paragraph{Principle~7: Foster Interoperability and Scalable Access}
+\label{par:principle7}
 Government open data should be distributed in formats that balance
 accessibility with computational efficiency. While flat CSV files remain
 widely compatible, they become inefficient as datasets scale. Agencies should
@@ -1134,9 +1095,8 @@ columnar formats (e.g., Parquet, Arrow) that support high-volume analytics.
 Leveraging existing enterprise infrastructure enables full access without
 duplicating effort or risking inconsistencies.
 
-\subsection{Principle~8: Embed Ethical and Privacy Safeguards}
-\label{subsec:principle8}
-
+\paragraph{Principle~8: Embed Ethical and Privacy Safeguards}
+\label{par:principle8}
 Open-data publication must balance transparency with the protection of
 individual and community privacy. Even without direct identifiers, modern
 data-linkage techniques can re-identify individuals by combining open datasets
