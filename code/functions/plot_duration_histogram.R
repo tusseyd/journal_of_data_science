@@ -163,26 +163,34 @@ plot_duration_histogram <- function(
     x_breaks_by <- max(bin_width, round(range_size / 20))
   }
   
-  # Generate all breaks
   all_breaks <- seq(min_value, max_value, by = x_breaks_by)
-  
-  # Apply skip factor
   if (x_label_skip > 1) {
     breaks_to_show <- all_breaks[seq(1, length(all_breaks), by = x_label_skip)]
   } else {
     breaks_to_show <- all_breaks
   }
   
-  # --- 7) Plot histogram ------------------------------------------------------
+  # --- 7) Plot histogram (DISCRETE FIX) --------------------------------------
+  bin_starts <- seq(
+    from = floor(min_value / bin_width) * bin_width,
+    to   = floor(max_value / bin_width) * bin_width,
+    by   = bin_width
+  )
+  to_int_safe <- function(x) as.integer(round(x))
+  hist_data[, bin_start := duration_binned]
+  hist_data[, bin_int   := to_int_safe(bin_start)]
+  all_levels_int <- to_int_safe(bin_starts)
+  hist_data[, bin_f := factor(bin_int, levels = all_levels_int)]
+  breaks_int   <- to_int_safe(breaks_to_show)
+  label_levels <- intersect(all_levels_int, breaks_int)
+  label_map    <- setNames(scales::comma(label_levels), as.character(label_levels))
   x_axis_title <- paste("Duration", paste0("(", data_units, ")"))
   
-  p <- ggplot2::ggplot(hist_data, ggplot2::aes(x = duration_binned, y = count)) +
+  p <- ggplot2::ggplot(hist_data, ggplot2::aes(x = bin_f, y = count)) +
     ggplot2::geom_col(
       ggplot2::aes(fill = is_suspicious),
-      width = bin_width * 0.8,
-      color = "gray40",
-      linewidth = 0.2,
-      alpha = 1.0
+      width = 1,
+      color = NA
     ) +
     ggplot2::scale_fill_manual(
       values = c(`TRUE` = left_bar_color, `FALSE` = bar_color),
@@ -194,42 +202,40 @@ plot_duration_histogram <- function(
       x = x_axis_title,
       y = ""
     ) +
-    ggplot2::scale_x_continuous(
-      breaks = breaks_to_show,
-      labels = scales::comma,
-      expand = c(0.01, 0)
+    ggplot2::scale_x_discrete(
+      breaks = as.character(label_levels),
+      labels = label_map,
+      drop   = FALSE
     ) +
     ggplot2::scale_y_continuous(labels = scales::comma, expand = c(0, 0)) +
     david_theme(text_size = 12, x_axis_angle = 45)
   
   if (!is.null(threshold_numeric)) {
-    p <- p + ggplot2::geom_vline(
-      xintercept = threshold_numeric,
-      color = "#D55E00",
-      linewidth = 1,
-      linetype = "dashed",
-      alpha = 0.85
-    )
-  }
-  
-  if (!is.null(threshold_numeric)) {
-    p <- p + ggplot2::annotate(
-      "text",
-      x = threshold_numeric,
-      y = max(hist_data$count, na.rm = TRUE) * 0.9,
-      label = "Suspicious Threshold",
-      hjust = -0.1,
-      size = 4,
-      color = "#D55E00"
-    )
+    thr_bin  <- to_int_safe(floor(threshold_numeric / bin_width) * bin_width)
+    thr_idx  <- match(thr_bin, all_levels_int)
+    if (!is.na(thr_idx)) {
+      p <- p +
+        ggplot2::annotate(
+          "segment",
+          x = thr_idx, xend = thr_idx,
+          y = 0, yend = max(hist_data$count, na.rm = TRUE),
+          colour = "#D55E00", linewidth = 1, linetype = "dashed", alpha = 0.85
+        ) +
+        ggplot2::annotate(
+          "text",
+          x = thr_idx,
+          y = max(hist_data$count, na.rm = TRUE) * 0.9,
+          label = "Suspicious Threshold",
+          hjust = -0.1, size = 4, colour = "#D55E00"
+        )
+    }
   }
   
   print(p)
   Sys.sleep(3)
-  
   outfile <- file.path(chart_dir, filename)
-  ggplot2::ggsave(outfile, plot = p, width = width_in, height = height_in, dpi = 300)
-  #  cat(sprintf("\nSaved histogram to: %s\n", outfile))
+  ggplot2::ggsave(outfile, plot = p, width = width_in, height = height_in,
+                  dpi = 300, device = grDevices::cairo_pdf)
   
   # --- 8) Cumulative chart ---------------------------------------------------
   p2 <- NULL
@@ -261,7 +267,6 @@ plot_duration_histogram <- function(
                                   limits = c(0, 100), expand = c(0, 0)) +
       david_theme(text_size = 12, x_axis_angle = 45)
     
-    # Add threshold line and label to cumulative plot
     if (!is.null(threshold_numeric)) {
       p2 <- p2 + 
         ggplot2::geom_vline(
@@ -274,7 +279,7 @@ plot_duration_histogram <- function(
         ggplot2::annotate(
           "text",
           x = threshold_numeric,
-          y = 90,  # Position at 90% on cumulative chart
+          y = 90,
           label = "Suspicious Threshold",
           hjust = -0.1,
           size = 4,
@@ -284,29 +289,15 @@ plot_duration_histogram <- function(
     
     print(p2)
     Sys.sleep(3)
-    
     outfile2 <- file.path(chart_dir, sub("\\.pdf$", "_cumulative.pdf", filename))
-    ggplot2::ggsave(outfile2, plot = p2, width = width_in, height = height_in, dpi = 300)
-    #    cat(sprintf("Saved cumulative chart to: %s\n", outfile2))
-    
-    # Percentile readouts (always show both seconds and days)
-    cat("\nKey percentile cutoff values:\n")
-    for (pct in c(90, 95, 99, 99.9)) {
-      row <- hist_data_cum[cum_pct >= pct][1]
-      if (nrow(row)) {
-        val <- row$duration_binned
-        val_sec <- val * sec_conversion  # convert to seconds
-        cat(sprintf("  %g%% of data is <= %s seconds (%.4f days)\n",
-                    pct, scales::comma(val_sec), val_sec / 86400))
-      }
-    }
+    ggplot2::ggsave(outfile2, plot = p2, width = width_in, height = height_in,
+                    dpi = 300, device = grDevices::cairo_pdf)
   }
   
-  # --- 9) Summary stats (always show both seconds and days) ------------------
+  # --- 9) Summary stats ------------------------------------------------------
   vals <- df$duration
-  vals_sec <- vals * sec_conversion  # convert to seconds
+  vals_sec <- vals * sec_conversion
   m_sec  <- mean(vals_sec); md_sec <- stats::median(vals_sec); s_sec <- stats::sd(vals_sec)
-  
   cat(sprintf("\nDuration histogram summary (%s to %s %s):\n",
               scales::comma(min_value), scales::comma(max_value), data_units))
   cat(sprintf("Total observations: %s\n", scales::comma(sum(hist_data$count))))

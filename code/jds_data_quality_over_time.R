@@ -11,8 +11,7 @@ base_dir <- file.path(
   "OneDrive",
   "Documents", 
   "datacleaningproject", 
-  "nyc311clean",
-  "Journal_of_Data_Science"
+  "journal_of_data_science"
 )
 cat("Running in STANDALONE mode\n")
 cat("Base directory:", base_dir, "\n")
@@ -54,7 +53,7 @@ console_output_file <- file.path(console_dir,
 
 ################################################################################
 # Select desired data file
-main_data_file <- "5-year_311SR_01-01-2020_thru_12-31-2024_AS_OF_09-23-2025.rds"
+main_data_file <- "5-year_311SR_01-01-2020_thru_12-31-2024_AS_OF_10-10-2025.rds"
 
 ################################################################################
 # -------------------------------------------------------------

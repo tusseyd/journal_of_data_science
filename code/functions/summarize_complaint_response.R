@@ -7,44 +7,54 @@ summarize_complaint_response <- function(
   stopifnot(data.table::is.data.table(DT))
   
   stats_dt <- DT[
-    !is.na(complaint_type),
-    {
-      vals <- duration_days[!is.na(duration_days)]
-      
-      if (length(vals) == 0) {
-        .(
-          N      = .N,
-          Min    = as.numeric(NA),
-          Q1     = as.numeric(NA),
-          Median = as.numeric(NA),
-          Mean   = as.numeric(NA),
-          Q3     = as.numeric(NA),
-          Max    = as.numeric(NA)
-        )
-      } else {
-        .(
-          N      = .N,
-          Min    = round(min(vals), 2),
-          Q1     = round(stats::quantile(vals, 0.25), 2),
-          Median = round(stats::median(vals), 2),
-          Mean   = round(mean(vals), 2),
-          Q3     = round(stats::quantile(vals, 0.75), 2),
-          Max    = round(max(vals), 2)
-        )
-      }
-    },
+    !is.na(complaint_type) & !is.na(duration_days),
+    .(
+      N      = .N,
+      Min    = round(min(duration_days), 2),
+      Median = round(stats::median(duration_days), 2),
+      Mean   = round(mean(duration_days), 2),
+      Max    = round(max(duration_days), 2),
+      Median_hours = round(stats::median(duration_days) * 24, 4)
+    ),
     by = complaint_type
-  ][N >= min_records][order(Median, complaint_type)]   # <-- ascending
+  ][N >= min_records]
   
-  # ---- Console output ----
+  # ---- Console output: Sort 1 - By Median (ascending) ----
   cat("\n=== Complaint Type Response Time Summary ===\n")
   cat(sprintf("Total complaint types: %d (N >= %d)\n\n",
               nrow(stats_dt), min_records))
-  cat("Sorted by Median duration (ascending):\n\n")
   
-  to_print <- as.data.frame(stats_dt)[seq_len(min(print_top, nrow(stats_dt))), ]
-  row.names(to_print) <- NULL   # cleaner console output
+  cat(strrep("=", 80), "\n")
+  cat("SORT 1: By Median Duration (ascending)\n")
+  cat(strrep("=", 80), "\n\n")
+  
+  stats_by_median <- stats_dt[order(Median, complaint_type)]
+  to_print <- as.data.frame(stats_by_median)
+  row.names(to_print) <- NULL
   print(to_print, row.names = FALSE)
   
-  invisible(stats_dt)
+  # ---- Console output: Sort 2 - By N (descending) ----
+  cat("\n\n")
+  cat(strrep("=", 80), "\n")
+  cat("SORT 2: By Count (N, descending)\n")
+  cat(strrep("=", 80), "\n\n")
+  
+  stats_by_count <- stats_dt[order(-N, complaint_type)]
+  to_print <- as.data.frame(stats_by_count)
+  row.names(to_print) <- NULL
+  print(to_print, row.names = FALSE)
+  
+  # ---- Console output: Sort 3 - Alphabetically ----
+  cat("\n\n")
+  cat(strrep("=", 80), "\n")
+  cat("SORT 3: Alphabetically by Complaint Type\n")
+  cat(strrep("=", 80), "\n\n")
+  
+  stats_alphabetical <- stats_dt[order(complaint_type)]
+  to_print <- as.data.frame(stats_alphabetical)
+  row.names(to_print) <- NULL
+  print(to_print, row.names = FALSE)
+  
+  # Return the original (median-sorted) version
+  invisible(stats_by_median)
 }

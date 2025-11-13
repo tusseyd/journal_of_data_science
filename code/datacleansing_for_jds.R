@@ -6,13 +6,13 @@ main_data_file <-
  
 # Boolean flag. TRUE to redirect console output to text file
 # FALSE to display console outpx`t on the screen
-enable_sink <- FALSE       
+enable_sink <- TRUE       
  
 #The "as of" date in "YYYY-MM-DD" format
-projection_date <- "2025-11-10"   
+projection_date <- "2025-11-11"   
 
 #Number of SRs for the year through the projection_date  
-projection_SR_count <- 3013710  
+projection_SR_count <- 3025753  
 
 # Okabe-Ito palette for colorblind safe 
 palette(c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
@@ -160,7 +160,7 @@ source_functions_safely(functions_dir)
 options(scipen = 999) # Set scipen option to a large value.
 options(digits = 15) # Set the number of decimal places to 15, the max observed.
 options(datatable.print.class = FALSE)
-options(max.print = 1000)
+options(max.print = 100000)
 
 # Extract the date after "AS_OF_"
 extracted_date <- sub(".*AS_OF_([0-9-]+).*", "\\1", main_data_file)
@@ -199,6 +199,14 @@ if (sink.number(type = "output") > 0L) {
   cat("\nExecution begins at:", formattedStartTime)
 }
 
+#########################################################################
+# Load the USPS zipcode file
+message("\nReading the USPS zipcode file.")
+
+USPS_zipcode_file_path <- file.path(data_dir, "USPS_zipcodes.rds")
+
+USPSzipcodes <- readRDS(USPS_zipcode_file_path)
+if (!is.data.table(USPSzipcodes)) setDT(USPSzipcodes)  # converts in place
 
 #########################################################################
 # Load the main 311 SR data file. Set the read & write paths.
@@ -565,7 +573,7 @@ yearly_bar_chart <- plot_annual_counts_with_projection(
   estimate_value = projection_SR_count,
   chart_dir = chart_dir,
   filename = "annual_trend_with_projection_bar_chart.pdf",
-  title = "",
+  title = "NYC 311 Service Requests by Year",
   include_projection_in_growth = TRUE,
   subtitle = "w/2025 projection"
 )
@@ -582,7 +590,7 @@ options(warn = 2)  # Turn warnings into errors
 plot_pareto_combo(
   DT               = d311,
   x_col            = agency,
-  title            = "",
+  title            = "Pareto Analysis by Agency",
   filename         = "SR_by_agency_pareto_combo_chart.pdf",
   chart_dir        = chart_dir,
   width_in         = 13,
@@ -606,100 +614,8 @@ d311[, (coord_cols) := lapply(.SD, as.numeric), .SDcols = coord_cols]
 
 #########################################################################
 message("\nOrganizing complaint_types.")
+
 cat("\n\n********** COMPLAINT TYPES **********")
-
-total_rows <- nrow(d311)
-
-# One pass: frequency + agency labeling per complaint_type
-complaint_summary_dt <- d311[
-  , .(
-    count = .N,
-    unique_agency_count = uniqueN(agency, na.rm = TRUE),
-    agency = {
-      u <- unique(agency)
-      u <- u[!is.na(u)]
-      if (length(u) == 1L) u else if (length(u) == 0L) NA_character_ else "MULTIPLE"
-    }
-  ),
-  by = complaint_type
-][
-  order(-count)
-][
-  # compute percents from counts to avoid cumulative rounding drift
-  , `:=`(
-    percent = round(100 * count / total_rows, 2),
-    cumulative_percent = round(100 * cumsum(count) / total_rows, 2)
-  )
-][]
-
-cat("\nThere are", nrow(complaint_summary_dt), "different complaint_type(s).\n")
-
-# ---- Console reports ----
-top_n <- 20L
-cat("\nTop ", top_n, " complaint_type(s) and responsible agency:\n", sep = "")
-top_dt <- complaint_summary_dt[1:min(.N, top_n), .(complaint_type, count, percent, cumulative_percent, agency)]
-top_df <- data.frame(
-  complaint_type = format(top_dt$complaint_type, justify = "left"),
-  count = format(top_dt$count, justify = "right"),
-  percent = format(top_dt$percent, justify = "right"),
-  cumulative_percent = format(top_dt$cumulative_percent, justify = "right"),
-  agency = format(top_dt$agency, justify = "left")
-)
-print(top_df, row.names = FALSE)
-
-cat("\nBottom ", top_n, " complaint_type(s) and responsible agency:\n", sep = "")
-bottom_dt <- tail(complaint_summary_dt[, .(complaint_type, count, agency)], top_n)
-bottom_df <- data.frame(
-  complaint_type = format(bottom_dt$complaint_type, justify = "left"),
-  count = format(bottom_dt$count, justify = "right"),
-  agency = format(bottom_dt$agency, justify = "left")
-)
-print(bottom_df, row.names = FALSE)
-
-cat("\nComplaints with multiple responsible agencies:\n")
-multiple_agency_dt <- complaint_summary_dt[agency == "MULTIPLE", .(complaint_type, count, percent)]
-multiple_df <- data.frame(
-  complaint_type = format(head(multiple_agency_dt, top_n)$complaint_type, justify = "left"),
-  count = format(head(multiple_agency_dt, top_n)$count, justify = "right"),
-  percent = format(head(multiple_agency_dt, top_n)$percent, justify = "right")
-)
-print(multiple_df, row.names = FALSE)
-
-# ---- Noise complaints (prefix "NOISE") ----
-noise_dt <- complaint_summary_dt[startsWith(complaint_type, "NOISE")]
-
-cat("\nThere are", nrow(noise_dt), "categories of noise complaints:\n")
-
-noise_display_dt <- noise_dt[, .(complaint_type, count, percent)]
-
-noise_df <- data.frame(
-  complaint_type = format(noise_display_dt$complaint_type, justify = "left"),
-  count = format(noise_display_dt$count, justify = "right"),
-  percent = format(noise_display_dt$percent, justify = "right")
-)
-
-print(head(noise_df, top_n), row.names = FALSE)
-
-noise_total <- noise_dt[, sum(count)]
-noise_pct   <- round(100 * noise_total / total_rows, 1)
-cat(
-  "\nNoise complaints of all ", nrow(noise_dt), "types number ",
-  format(noise_total, big.mark = ","),
-  ", constituting ", noise_pct, "% of all SRs.\n", sep = ""
-)
-
-# chart
-plot_pareto_combo(
-  DT              = d311,
-  x_col           = complaint_type,
-  title           = "",
-  filename        = "SR_by_complaint_type_pareto_combo_chart.pdf",
-  chart_dir       = chart_dir,
-  show_labels     = FALSE,
-  top_n            = 20,
-  show_threshold_80 = FALSE,   # whether to draw the 80% reference line
-  annotation_size = 3
-)
 
 #########################################################################
 # Determine status of SRs
@@ -839,11 +755,11 @@ lat_precision <- analyze_decimal_precision(
   chart_dir      = chart_dir,       
   generate_plots = TRUE   
   )
-if (!is.null(lat_precision)) {
-  print(lat_precision, row.names = FALSE)
-  cat(sprintf("\nTotal valid latitude values: %s\n", 
-              format(sum(lat_precision$N), big.mark = ",")))
-}
+# if (!is.null(lat_precision)) {
+#   print(lat_precision, row.names = FALSE)
+#   cat(sprintf("\nTotal valid latitude values: %s\n", 
+#               format(sum(lat_precision$N), big.mark = ",")))
+# }
 
 ##################
 # Analyze longitude
@@ -855,11 +771,11 @@ lon_precision <- analyze_decimal_precision(
   chart_dir      = chart_dir,       
   generate_plots = TRUE   
 )
-if (!is.null(lon_precision)) {
-  print(lon_precision, row.names = FALSE)
-  cat(sprintf("\nTotal valid longitude values: %s\n", 
-              format(sum(lon_precision$N), big.mark = ",")))
-}
+# if (!is.null(lon_precision)) {
+#   print(lon_precision, row.names = FALSE)
+#   cat(sprintf("\nTotal valid longitude values: %s\n", 
+#               format(sum(lon_precision$N), big.mark = ",")))
+# }
 
 ##################
 # Combined summary statistics
@@ -1068,6 +984,7 @@ status_res <- report_status_closed_date_exceptions(
   flip          = FALSE,
   min_count     = 1
 )
+
 
 ################################################################################
 # --- NYC bounding box (from NYBBWI metadata) ---
@@ -1285,15 +1202,6 @@ valid_community_boards <-
   )
 
 # Check for invalid zip codes in d311$incident_zip using USPSzipcodesOnly
-#########################################################################
-# Load the USPS zipcode file
-message("\nReading the USPS zipcode file.")
-
-USPS_zipcode_file_path <- file.path(data_dir, "USPS_zipcodes.rds")
-
-USPSzipcodes <- readRDS(USPS_zipcode_file_path)
-if (!is.data.table(USPSzipcodes)) setDT(USPSzipcodes)  # converts in place
-
 valid_USPS_zipcodes <- as.list(USPSzipcodes$zip)
 
 # Field to include "agency" in the computed dataset
@@ -1422,27 +1330,21 @@ cat("\n\n**********CHECKING FOR DATE FIELD ISSUES **********\n")
 
 cat("\n=== CALCULATING SR DURATIONS FOR LATER USE ===\n")
 
-d311 <- calculate_durations(d311, 
-                            "created_date", 
-                            "closed_date", 
-                            tz = "America/New_York",
-                            keep_parsed_timestamps = FALSE,
-                            in_place = FALSE)
+d311 <- calculate_durations(d311, "created_date", "closed_date", tz = "America/New_York", in_place = FALSE)
 
 # ==============================================================================
-# ==============================================================================
-# SECTION 1: DATE FIELD OVERVIEW - ALL DATE FIELDS
+# SECTION 1: CREATED DATE ANALYSIS
 # ==============================================================================
 
-cat("\n=== DATE FIELD YEAR DISTRIBUTION ANALYSIS ===\n")
+cat("\n=== CREATED DATE ANALYSIS ===\n")
 
+# Assuming date_cols is a character vector of column names
 date_cols <- c(
-  "created_date",
-  "closed_date",
   "resolution_action_updated_date",
-  "due_date"
+  "due_date",
+  "created_date", 
+  "closed_date"
 )
-
 for (col in date_cols) {
   cat("\n", rep("=", 60), "\n", sep = "")
   cat("Date Field:", col, "\n")
@@ -1478,102 +1380,98 @@ for (col in date_cols) {
   cat("\n")
 }
 
-# ==============================================================================
-# SECTION 2: CREATED DATE DETAILED ANOMALY ANALYSIS
-# ==============================================================================
-
-cat("\n=== CREATED DATE ANOMALY ANALYSIS ===\n")
-
-# Total rows for percentage calculations
+# total rows in d311
 total_rows <- num_rows_d311
 
-# Helper function for formatted count with percentage
 fmt_count_pct <- function(n, total) {
+  # Handle NA or zero totals gracefully
   if (is.null(total) || is.na(total) || total == 0) {
     return(sprintf("%s (n/a)", prettyNum(n, big.mark = ",")))
   }
+  
   pct <- 100 * n / total
   sprintf("%s (%.2f%%)", prettyNum(n, big.mark = ","), pct)
 }
 
-# Identify created_date anomalies
-future_created_dates        <- d311[created_date > as_of_date]
-past_created_dates          <- d311[created_date < genesis_date]
-missing_created_dates       <- d311[is.na(created_date)]
-midnight_only_created_dates <- d311[format(created_date, "%H:%M:%S") == "00:00:00"]
-noon_only_created_dates     <- d311[format(created_date, "%H:%M:%S") == "12:00:00"]
 
-# Print anomaly summary
-cat("\nCreated_date anomaly summary (tz = America/New_York):\n")
-cat("  Future created dates:   ", 
-    fmt_count_pct(nrow(future_created_dates), total_rows), "\n")
-cat("  Past created dates:     ", 
-    fmt_count_pct(nrow(past_created_dates), total_rows), "\n")
-cat("  Missing created dates:  ", 
-    fmt_count_pct(nrow(missing_created_dates), total_rows), "\n")
-cat("  Midnight-only created:  ", 
-    fmt_count_pct(nrow(midnight_only_created_dates), total_rows), "\n")
-cat("  Noon-only created:      ", 
-    fmt_count_pct(nrow(noon_only_created_dates), total_rows), "\n")
+  # Anomaly checks
+  future_created_dates        <- d311[created_date > as_of_date]
+  past_created_dates          <- d311[created_date < genesis_date]
+  missing_created_dates       <- d311[is.na(created_date)]
+  midnight_only_created_dates <- d311[format(created_date, "%H:%M:%S") == "00:00:00"]
+  noon_only_created_dates     <- d311[format(created_date, "%H:%M:%S") == "12:00:00"]
 
-# Define anomaly datasets for detailed analysis
-anomaly_list_created <- list(
-  list(
-    dt = future_created_dates,
-    label = "Future Created Dates",
-    condition = "Created in Future"
-  ),
-  list(
-    dt = past_created_dates,
-    label = paste0("Past Created Dates: before ", genesis_date, " -- 311 launch date"),
-    condition = "Created Before 311 System launch"
-  ),
-  list(
-    dt = midnight_only_created_dates,
-    label = "Midnight Created Dates",
-    condition = "Created at Midnight"
-  ),
-  list(
-    dt = noon_only_created_dates,
-    label = "Noon Created Dates",
-    condition = "Created at Noon"
-  )
-)
-
-# Generate detailed charts for each anomaly type
-for (anomaly in anomaly_list_created) {
-  if (nrow(anomaly$dt) > 0) {
-    plot_date_field_analysis(
-      DT = anomaly$dt,
-      date_col = created_date,
-      group_col = agency,
-      chart_dir = chart_dir,
-      label = anomaly$label,
-      condition_text = anomaly$condition,
-      min_agency_count = 2,
-      top_n = 30
-    )
-  } else {
-    cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
-  }
-}
-
-# Special handling for missing created dates
-if (nrow(missing_created_dates) > 0) {
-  cat("\n=== Missing Created Dates Detail ===\n")
-  cat(sprintf("Total records with missing created_date: %s\n", 
-              format(nrow(missing_created_dates), big.mark = ",")))
+  # Summary
+  cat("Created_date anomaly check (tz = America/New_York):\n")
+  cat("  Future created dates:   ", 
+      fmt_count_pct(nrow(future_created_dates), total_rows), "\n")
+  cat("  Past created dates:     ", 
+      fmt_count_pct(nrow(past_created_dates), total_rows), "\n")
+  cat("  Midnight-only created:  ", 
+      fmt_count_pct(nrow(midnight_only_created_dates), total_rows), "\n")
+   cat("  Noon-only created:      ", 
+      fmt_count_pct(nrow(noon_only_created_dates), total_rows), "\n")
   
-  missing_summary <- missing_created_dates[, .N, by = agency][order(-N)]
-  cat("\nTop agencies with missing created dates:\n")
-  print(head(missing_summary, 10))
-} else {
-  cat("\n=== Missing Created Dates Detail ===\n")
-  cat("No records with missing created_date found.\n")
-}  
-
+  # Define anomaly datasets and their labels
+  anomaly_list_created <- list(
+    list(
+      dt = future_created_dates,
+      label = "Future Created Dates",
+      condition = "Created in Future"
+    ),
+    list(
+      dt = past_created_dates,
+      label = paste0("Past Created Dates: before ", 
+                     genesis_date,  " -- 311 launch date"),
+      condition = "Created Before 311 System launch"
+    ),
+    list(
+      dt = midnight_only_created_dates,
+      label = "Midnight Created Dates",
+      condition = "Created at Midnight"
+    ),
+    list(
+      dt = noon_only_created_dates,
+      label = "Noon Created Dates",
+      condition = "Created at Noon"
+    )
+  )
+  
+  # Loop through and create charts
+  # Simplified loop
+  for (anomaly in anomaly_list_created) {
+    if (nrow(anomaly$dt) > 0) {
+      plot_date_field_analysis(
+        DT = anomaly$dt,
+        date_col = created_date,
+        group_col = agency,
+        chart_dir = chart_dir,
+        label = anomaly$label,
+        condition_text = anomaly$condition,
+        min_agency_count = 2,
+        top_n = 30
+      )
+    } else {
+      cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
+    }
+  }
+  
+  # Handle missing_created_dates separately
+  if (nrow(missing_created_dates) > 0) {
+    cat("\n=== Missing Created Dates Summary ===\n")
+    cat(sprintf("Total records with missing created_date: %s\n", 
+                format(nrow(missing_created_dates), big.mark = ",")))
+    
+    missing_summary <- missing_created_dates[, .N, by = agency][order(-N)]
+    cat("\nTop agencies with missing created dates:\n")
+    print(head(missing_summary, 10))
+  } else {
+    cat("\n=== Missing Created Dates Summary ===\n")
+    cat("No records with missing created_date found.\n")
+  }
+  
 # ==============================================================================
-# SECTION 3: DUE DATE ANALYSIS
+# SECTION 2: DUE DATE ANALYSIS
 # ==============================================================================
 
 # Identify service requests with due_date before created_date
@@ -1675,7 +1573,7 @@ cat("\n=== DUE DATE ANALYSIS ===\n")
   )
   
 # ==============================================================================
-# SECTION 4: RESOLUTION UPDATE DATE ANALYSIS
+# SECTION 3: RESOLUTION UPDATE DATE ANALYSIS
 # ==============================================================================
 # Check for resolution_action_updated_date occurring before created_date
 # Excludes same-day cases where resolution time = 00:00:00 (likely defaults)
@@ -1782,7 +1680,7 @@ res <- report_resolution_update_before_created(
 )
 
 # ==============================================================================
-# SECTION 5: POST-CLOSED RESOLUTION UPDATE ANALYSIS
+# SECTION 4: POST-CLOSED RESOLUTION UPDATE ANALYSIS
 # ==============================================================================
 # Identify service requests with resolution updates occurring long after closure
 # Flags potential process violations or data entry delays
@@ -1797,6 +1695,113 @@ res <- report_post_closed_updates(
     resolution_action_threshold = 30,        # Days after closure
     too_large_threshold = 365 * 3,        # 6 years in days
     chart_dir = chart_dir
+)
+
+# ==============================================================================
+# SECTION 5: CLOSED DATE ANALYSIS
+# ==============================================================================
+# Identify service requests with closed dates in the future
+# Flags records where closed_date > max(created_date) + 1 day
+
+cat("\n===  CLOSED DATE ANALYSIS ===\n")
+
+# Anomaly checks
+future_closed_dates           <- d311[closed_date > as_of_date]
+past_closed_dates             <- d311[closed_date < genesis_date]
+missing_closed_dates          <- d311[is.na(closed_date)]
+midnight_only_closed_dates    <- d311[format(closed_date, "%H:%M:%S") == "00:00:00"]
+noon_only_closed_dates        <- d311[format(closed_date, "%H:%M:%S") == "12:00:00"]
+closed_before_created         <- d311[closed_date < created_date]
+
+# Summary
+cat("closed_date anomaly check (tz = America/New_York):\n")
+cat("  Future closed dates:   ", 
+    fmt_count_pct(nrow(future_closed_dates), total_rows), "\n")
+cat("  Past closed dates:     ", 
+    fmt_count_pct(nrow(past_closed_dates), total_rows), "\n")
+cat("  Missing closed dates:  ", 
+    fmt_count_pct(nrow(missing_closed_dates), total_rows), "\n")
+cat("  Midnight-only closed:  ", 
+    fmt_count_pct(nrow(midnight_only_closed_dates), total_rows), "\n")
+cat("  Noon-only closed:      ", 
+    fmt_count_pct(nrow(noon_only_closed_dates), total_rows), "\n")
+cat("  Closed < Created:      ", 
+    fmt_count_pct(nrow(closed_before_created), total_rows), "\n")
+
+
+# Define anomaly datasets and their labels for closed_date
+anomaly_list_closed <- list(
+  list(
+    dt = future_closed_dates,
+    label = "Closed Dates in the Future",
+    
+    condition = "Closed in Future"
+  ),
+  list(
+    dt = past_closed_dates,
+    label = "Closed Dates in the Past",
+    
+    condition = "Closed Before Created"
+  ),
+  list(
+    dt = midnight_only_closed_dates,
+    label = "Midnight Closed Dates",
+    
+    condition = "Closed at Midnight"
+  ),
+  list(
+    dt = noon_only_closed_dates,
+    label = "Noon Closed Dates",
+    
+    condition = "Closed at Noon"
+  ),
+  list(
+    dt = closed_before_created,
+    label = "Closed before Created",
+    include_boxplot = TRUE,
+    condition = "Closed < Created"
+  )
+)
+
+# Loop through and create charts
+for (anomaly in anomaly_list_resolution) {
+  if (nrow(anomaly$dt) > 0) {
+    plot_date_field_analysis(
+      DT = anomaly$dt,
+      date_col = closed_date,
+      group_col = agency,
+      chart_dir = chart_dir,
+      label = anomaly$label,
+      condition_text = anomaly$condition,
+      min_agency_count = 2,
+      top_n = 20
+    )
+  } else {
+    cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
+  }
+}
+
+# Handle missing_closed_dates separately
+if (nrow(missing_closed_dates) > 0) {
+  cat("\n=== Missing Closed Dates Summary ===\n")
+  cat(sprintf("Total records with missing closed_date: %s\n", 
+              format(nrow(missing_closed_dates), big.mark = ",")))
+  
+  missing_summary <- missing_closed_dates[, .N, by = agency][order(-N)]
+  cat("\nTop agencies with missing closed dates:\n")
+  print(head(missing_summary, 10))
+} else {
+  cat("\n=== Missing Closed Dates Summary ===\n")
+  cat("No records with missing closed_date found.\n")
+}
+
+res <- report_future_closed(
+  DT = d311,
+  make_plots = TRUE,
+  chart_dir = chart_dir,
+  max_closed_date = max_closed_date,
+  boxplot_file = "future_closed_boxplot.pdf",
+  pareto_file = "future_closed_pareto.pdf"
 )
 
 # ==============================================================================
@@ -1824,10 +1829,14 @@ dst_start_summary <- analyze_dst_springforward(
 ) 
 
 ################################################################################
+
+#zero_screenout <- audit_zero_time_screenout(d311)
+
 # Call with the 2019 file path
 result <- summarize_backlog(
   DT = d311,
-  data_dir = data_dir)
+  data_dir = data_dir
+)
 
 ################################################################################
 # ==============================================================================
@@ -1840,9 +1849,9 @@ cat("\n=== ANALYZING TEMPORAL PATTERNS ===\n")
 
 # 1. Define the columns to iterate over (as strings)
 date_cols <- c(
-  "created_date",
-  "closed_date",
-  "resolution_action_updated_date"
+  "resolution_action_updated_date",
+  "created_date", 
+  "closed_date"
 )
 
 # 2. Define the agency column name as a string (to be injected into the function call)
@@ -1872,6 +1881,7 @@ for (col_name in date_cols) {
   
   all_patterns_results[[result_name]] <- results
 }
+
 
 #########################################################################
 
@@ -1935,21 +1945,21 @@ cat("\n=== ANALYZING NEGATIVE DURATIONS ===\n")
 # Filter to negative duration records
 negative_data <- d311[duration_days < 0 & !is.na(duration_days)]
 
-# Generate summary statistics
-limited_decimal_summary <- summary(negative_data$duration_days)
-round(limited_decimal_summary, 5)
-
 # Set histogram limits for negative values
 upper_limit_neg <- 0      # Less negative (closer to zero)
-lower_limit_neg <- -0 # More negative (further from zero)
+lower_limit_neg <- -365   # More negative (further from zero)
 
 # Create bounded dataset for plotting
 limited_negative_data <- negative_data[
   duration_days >= lower_limit_neg & duration_days <= upper_limit_neg
 ]
 
+# Generate summary statistics
+summary(negative_data$duration_day)
+
 # Count records within plotting bounds
 n_plotted_neg <- nrow(limited_negative_data)
+
 
 plot_histogram(
   DT         = limited_negative_data,
@@ -1978,23 +1988,12 @@ plot_histogram(
   height     = 8.5
 )
 
-# Redfine limited negative for violin chart
-# Set histogram limits for negative values
-upper_limit_neg <- 0      # Less negative (closer to zero)
-lower_limit_neg <- -365 # More negative (further from zero)
-
-# Create bounded dataset for plotting
-limited_negative_data <- negative_data[
-  duration_days >= lower_limit_neg & duration_days <= upper_limit_neg
-]
-
-
 create_violin_chart(
   dataset = limited_negative_data,
   x_axis_field = "duration_days",
   chart_directory = chart_dir,
   chart_file_name = "negative_duration_SR_violin.pdf",
-  chart_title = ""
+  chart_title = "Distribution of Negative Duration Days"
 )
 
 # ==============================================================================
@@ -2047,13 +2046,14 @@ cat("LogNormal_3SD threshold:", threshold_numeric, "seconds\n")
 # - Positive (small, large, extreme)
 
 cat("\n=== COMPREHENSIVE DURATION CATEGORY ANALYSIS ===\n")
-duraton_analysis <- analyze_duration_QA(d311, chart_dir = chart_dir)
+duraton_analysis <- analyze_duration_QA(d311, 
+                                        chart_dir = chart_dir)
 
 cat("\n=== RESPONSE TIMES BY COMPLAINT CATEGORY ANALYSIS ===\n")
 complaint_stats <- summarize_complaint_response(
   d311, 
   print_top = 300,
-  min_records = 25)
+  min_records = 50)
   
 # ==============================================================================
 # END OF DURATION ANALYSIS
