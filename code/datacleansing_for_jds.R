@@ -6,13 +6,13 @@ main_data_file <-
  
 # Boolean flag. TRUE to redirect console output to text file
 # FALSE to display console outpx`t on the screen
-enable_sink <- TRUE      
+enable_sink <- FALSE       
  
 #The "as of" date in "YYYY-MM-DD" format
-projection_date <- "2025-10-31"   
+projection_date <- "2025-11-10"   
 
 #Number of SRs for the year through the projection_date  
-projection_SR_count <- 2912268  
+projection_SR_count <- 3013710  
 
 # Okabe-Ito palette for colorblind safe 
 palette(c("#E69F00", "#56B4E9", "#009E73", "#F0E442", 
@@ -24,7 +24,7 @@ palette(c("#E69F00", "#56B4E9", "#009E73", "#F0E442",
 # -------------------------------------------------------------
 load_required_packages <- function(verbose = TRUE) {
   # Ordered to avoid common masking issues
-  required_packages <- c(
+  required_packages  <- c(
     "data.table",      # Load first - commonly masked functions
     "arrow",
     "fasttime",
@@ -199,14 +199,6 @@ if (sink.number(type = "output") > 0L) {
   cat("\nExecution begins at:", formattedStartTime)
 }
 
-#########################################################################
-# Load the USPS zipcode file
-message("\nReading the USPS zipcode file.")
-
-USPS_zipcode_file_path <- file.path(data_dir, "USPS_zipcodes.rds")
-
-USPSzipcodes <- readRDS(USPS_zipcode_file_path)
-if (!is.data.table(USPSzipcodes)) setDT(USPSzipcodes)  # converts in place
 
 #########################################################################
 # Load the main 311 SR data file. Set the read & write paths.
@@ -224,7 +216,11 @@ num_columns_d311 <- ncol(d311)
 stopifnot("unique_key" %in% names(d311))
 setindex(d311, unique_key)   # no reorder; speeds joins/subsets on unique_key
 
-copy_raw_data <- d311
+#########################################################################
+# Regenerate input data if necessary
+
+#copy_raw_data <- d311
+#d311 <- copy_raw_data
 
 table(lubridate::year(d311$closed_date)) 
 
@@ -269,83 +265,6 @@ if (all_unique) {
   cat("\nResolve NA/duplicate keys before indexing.\n")
   # Do NOT setindex here to avoid masking an issue.
   }
-
-#########################################################################
-
-cat("\n\n**********DATA SUMMARY**********")
-
-options(warn = 2)  
-
-########################################################################
-# assume d311 is a data.table and created_date is POSIXct
-tz_out  <-  "America/New_York"                    
-fmt_ts  <- "%Y-%m-%d %H:%M:%S"
-fmt_day <- "%Y-%m-%d"               
-
-# Compute once
-rng <- d311[, range(created_date, na.rm = TRUE)]  # POSIXct min,max
-if (any(is.infinite(rng))) stop("created_date has no non-missing values")
-
-earliest_date <- rng[1L]
-latest_date   <- rng[2L]
-
-# Timestamp strings
-earliest_date_formatted <- format(earliest_date, fmt_ts, tz = tz_out)
-latest_date_formatted   <- format(latest_date,   fmt_ts, tz = tz_out)
-
-# Date-only strings for titles
-earliest_title <- format(earliest_date, fmt_day, tz = tz_out)
-latest_title   <- format(latest_date,   fmt_day, tz = tz_out)
-
-#########################################################################
-# Probe right before function call
-range(d311$created_date)
-summary(attr(d311$created_date, "tzone"))
-
-# Plot yearly growth of 311 SRs.
-message("\nCreating year plot and statistics.")
-
-yearly_bar_chart <- plot_annual_counts_with_projection(
-  DT = d311,
-  created_col = "created_date",
-  estimate_flag = TRUE,
-  estimate_date = projection_date,
-  estimate_value = projection_SR_count,
-  chart_dir = chart_dir,
-  filename = "annual_trend_with_projection_bar_chart.pdf",
-  title = "NYC 311 Service Requests by Year",
-  include_projection_in_growth = TRUE,
-  subtitle = "w/linear trendline & 2025 projection"
-)
-
-#########################################################################
-# fraction in 0–1 with 4 decimals
-sorted_by_agency <- d311[, .(count = .N), by = agency][order(-count)]
-sorted_by_agency[, percentage := round(count / sum(count), 4)]
-sorted_by_agency[, cumulative_percentage := cumsum(percentage)]
-
-# At the top of your script
-options(warn = 2)  # Turn warnings into errors
-
-plot_pareto_combo(
-  DT               = d311,
-  x_col            = agency,
-  title            = "Pareto Analysis by Agency",
-  filename         = "SR_by_agency_pareto_combo_chart.pdf",
-  chart_dir        = chart_dir,
-  width_in         = 13,
-  height_in        = 8.5,
-  show_labels      = FALSE,
-  show_threshold_80 = TRUE,   # whether to draw the 80% reference line
-  annotation_size  = 3.5
-)
-
-# Display the results
-cat("\nRows in the 311 SR dataset:", format(num_rows_d311, big.mark = ","))
-cat("\nColumns in the 311 SR dataset:", format(num_columns_d311, big.mark = ","))
-cat("\nAgencies represented:", length(unique(d311$agency)))
-cat("\n\nData contains SRs from", earliest_date_formatted, 
-    "through", latest_date_formatted)
 
 ########################################################################
 
@@ -458,7 +377,7 @@ setorder(field_usage_summary_dt, -total)
 pct_cols <- paste0(agency_cols, "_pct")
 field_usage_summary_dt[
   , (pct_cols) := lapply(.SD, function(x) fifelse(total > 0, 
-                                                round(100 * x / total, 5), 0)),
+                                                  round(100 * x / total, 5), 0)),
   .SDcols = agency_cols
 ]
 
@@ -493,11 +412,11 @@ columns_to_keep <- c(
   "created_date", 
   "closed_date",
   "agency", 
-  "agency_name", 
-  "complaint_type",
-  "location_type", 
+  #  "agency_name", 
+    "complaint_type",
+  #  "location_type", 
   "incident_zip",
-  "incident_address", 
+  #  "incident_address", 
   "street_name", 
   "cross_street_1",
   "cross_street_2", 
@@ -505,17 +424,17 @@ columns_to_keep <- c(
   "intersection_street_2",
   "address_type", 
   "landmark",
-  "facility_type", 
+  #  "facility_type", 
   "status", 
   "due_date",
   "resolution_action_updated_date", 
   "community_board",
-  "bbl", 
+  #  "bbl", 
   "borough", 
   "x_coordinate_state_plane",
   "y_coordinate_state_plane", 
   "open_data_channel_type", 
-  "park_facility_name",
+  #  "park_facility_name",
   "park_borough", 
   "vehicle_type", 
   "taxi_company_borough",
@@ -527,8 +446,158 @@ columns_to_keep <- c(
 # Remove unnecessary columns to free up memory
 d311[, setdiff(names(d311), columns_to_keep) := NULL]
 
+gc()  # Force garbage collection
+
 # Make a copy for troubleshooting purposes to avoid re-reading in data
 #copy_d311 <- d311
+
+#########################################################################
+
+cat("\n\n**********CROSS STREET/INTERSECTION STREET ANALYSYS**********\n")
+message("\nCross_street and Intersection_street analysis.")
+
+# Define street pairs to analyze
+street_pairs <- list(
+  list(street1 = "cross_street_1", street2 = "intersection_street_1"),
+  list(street1 = "cross_street_2", street2 = "intersection_street_2"),
+  list(street1 = "landmark", street2 = "street_name")
+)
+
+# Initialize results storage
+all_comparison_results <- list()
+
+# Loop through each street pair
+for (i in seq_along(street_pairs)) {
+  pair <- street_pairs[[i]]
+  
+  cat("\n")
+  cat(paste(rep("=", 80), collapse = ""), "\n")
+  cat(sprintf("STREET PAIR ANALYSIS %d of %d\n", i, length(street_pairs)))
+  #  cat(paste(rep("=", 80), collapse = ""), "\n")
+  
+  # Run comparison analysis
+  comparison_result <- compare_street_analyses(
+    dt = d311,
+    street1_col = pair$street1,
+    street2_col = pair$street2,
+    chart_dir = chart_dir,
+    run_enhanced = FALSE
+  )
+  
+  # Store results with descriptive name
+  pair_name <- sprintf("%s_vs_%s", pair$street1, pair$street2)
+  all_comparison_results[[pair_name]] <- comparison_result
+  
+  #  cat(sprintf("Completed analysis for %s vs %s\n", pair$street1, pair$street2))
+}
+
+# Summary across all pairs
+cat("\n")
+cat(paste(rep("=", 80), collapse = ""), "\n")
+cat("SUMMARY ACROSS ALL STREET PAIRS\n")
+#cat(paste(rep("=", 80), collapse = ""), "\n")
+
+for (i in seq_along(all_comparison_results)) {
+  result <- all_comparison_results[[i]]
+  pair_name <- names(all_comparison_results)[i]
+  
+  cat(sprintf("\n%s:\n", toupper(gsub("_", " ", pair_name))))
+  cat(sprintf("  Match rate:     %5.4f%%\n", result$raw_analysis$match_rate * 100))
+  cat(sprintf("  Cleaned match rate: %5.4f%%\n", result$cleaned_analysis$match_rate * 100))
+  cat(sprintf("  Improvement:        %5.4f%% (%s records)\n", 
+              result$comparison$match_rate_improvement * 100,
+              scales::comma(result$comparison$match_improvement)))
+}
+
+cat(sprintf("\nTotal street pair analyses completed: %d\n", length(all_comparison_results)))
+
+# Remove cross and intersections streets immediately
+d311[, c(
+  "cross_street_1", 
+  "intersection_street_1", 
+  "cross_street_2", 
+  "intersection_street_2",
+  "landmark",
+  "street_name") := NULL]  # Remove immediately
+
+gc()  # Force garbage collection
+
+#########################################################################
+
+cat("\n\n**********DATA SUMMARY**********")
+
+options(warn = 2)  
+
+########################################################################
+# assume d311 is a data.table and created_date is POSIXct
+tz_out  <-  "America/New_York"                    
+fmt_ts  <- "%Y-%m-%d %H:%M:%S"
+fmt_day <- "%Y-%m-%d"               
+
+# Compute once
+rng <- d311[, range(created_date, na.rm = TRUE)]  # POSIXct min,max
+if (any(is.infinite(rng))) stop("created_date has no non-missing values")
+
+earliest_date <- rng[1L]
+latest_date   <- rng[2L]
+
+# Timestamp strings
+earliest_date_formatted <- format(earliest_date, fmt_ts, tz = tz_out)
+latest_date_formatted   <- format(latest_date,   fmt_ts, tz = tz_out)
+
+# Date-only strings for titles
+earliest_title <- format(earliest_date, fmt_day, tz = tz_out)
+latest_title   <- format(latest_date,   fmt_day, tz = tz_out)
+
+#########################################################################
+# Probe right before function call
+range(d311$created_date)
+summary(attr(d311$created_date, "tzone"))
+
+# Plot yearly growth of 311 SRs.
+message("\nCreating year plot and statistics.")
+
+yearly_bar_chart <- plot_annual_counts_with_projection(
+  DT = d311,
+  created_col = "created_date",
+  estimate_flag = TRUE,
+  estimate_date = projection_date,
+  estimate_value = projection_SR_count,
+  chart_dir = chart_dir,
+  filename = "annual_trend_with_projection_bar_chart.pdf",
+  title = "",
+  include_projection_in_growth = TRUE,
+  subtitle = "w/2025 projection"
+)
+
+#########################################################################
+# fraction in 0–1 with 4 decimals
+sorted_by_agency <- d311[, .(count = .N), by = agency][order(-count)]
+sorted_by_agency[, percentage := round(count / sum(count), 4)]
+sorted_by_agency[, cumulative_percentage := cumsum(percentage)]
+
+# At the top of your script
+options(warn = 2)  # Turn warnings into errors
+
+plot_pareto_combo(
+  DT               = d311,
+  x_col            = agency,
+  title            = "",
+  filename         = "SR_by_agency_pareto_combo_chart.pdf",
+  chart_dir        = chart_dir,
+  width_in         = 13,
+  height_in        = 8.5,
+  show_labels      = FALSE,
+  show_threshold_80 = TRUE,   # whether to draw the 80% reference line
+  annotation_size  = 3.5
+)
+
+# Display the results
+cat("\nRows in the 311 SR dataset:", format(num_rows_d311, big.mark = ","))
+cat("\nColumns in the 311 SR dataset:", format(num_columns_d311, big.mark = ","))
+cat("\nAgencies represented:", length(unique(d311$agency)))
+cat("\n\nData contains SRs from", earliest_date_formatted, 
+    "through", latest_date_formatted)
 
 #########################################################################
 # Convert coordinate columns to numeric
@@ -623,7 +692,7 @@ cat(
 plot_pareto_combo(
   DT              = d311,
   x_col           = complaint_type,
-  title           = "Pareto Analysis of Complaint Types",
+  title           = "",
   filename        = "SR_by_complaint_type_pareto_combo_chart.pdf",
   chart_dir       = chart_dir,
   show_labels     = FALSE,
@@ -864,7 +933,116 @@ if (!is.null(lat_precision) && !is.null(lon_precision)) {
   
   print(comparison_with_total, row.names = FALSE)
 }
+
+#########################################################################
+
+cat("\n\n**********CHECKING FOR DUPLICATE VALUES**********\n")
+
+#########################################################################
+message("\nChecking fields for duplicates.")
+
+# Filter complete cases
+valid_data <- d311[!is.na(location) & !is.na(latitude) & !is.na(longitude)]
+if (nrow(valid_data) == 0) {
+  cat("No complete location data found for comparison.\n")
+  redundancy_pct <- 0
+} else {
+  # Use strcapture for safer parsing of "(lat, lon)" strings
+  coords <- strcapture(
+    pattern = "^\\(([^,]+),\\s*([^)]+)\\)$",
+    x = valid_data$location,
+    proto = list(lat = numeric(), lon = numeric())
+  )
   
+  # Combine safely into valid_data
+  valid_data[, `:=`(
+    location_lat = coords$lat,
+    location_lon = coords$lon
+  )]
+  
+  # Drop rows where regex failed
+  complete_rows <- valid_data[!is.na(location_lat) & !is.na(location_lon)]
+  
+  total_rows <- nrow(complete_rows)
+  
+  if (total_rows == 0) {
+    cat("No rows with extractable location coordinates found.\n")
+    redundancy_pct <- 0
+  } else {
+    # Round to 5 decimal places, then allow small variance (±0.00001)
+    complete_rows[, lat_match := abs(round(as.numeric(latitude), 6) - 
+                                       round(as.numeric(location_lat), 6)) <= 0.000001]
+    complete_rows[, lon_match := abs(round(as.numeric(longitude), 6) - 
+                                       round(as.numeric(location_lon), 6)) <= 0.000001]
+    complete_rows[, both_match := lat_match & lon_match]
+    
+    lat_matches  <- sum(complete_rows$lat_match, na.rm = TRUE)
+    lon_matches  <- sum(complete_rows$lon_match, na.rm = TRUE)
+    exact_matches <- sum(complete_rows$both_match, na.rm = TRUE)
+    redundancy_pct <- 100 * exact_matches / total_rows
+    
+    cat("\nLocation redundancy check (5 decimals ±0.00001):\n")
+    cat(sprintf("  Complete rows analyzed: %d\n", total_rows))
+    cat(sprintf("  Latitude matches: %d (%.2f%%)\n", lat_matches, 
+                100 * lat_matches / total_rows))
+    cat(sprintf("  Longitude matches: %d (%.2f%%)\n", lon_matches, 
+                100 * lon_matches / total_rows))
+    cat(sprintf("  Both match exactly: %d (%.2f%%)\n", exact_matches, 
+                redundancy_pct))
+    
+    if (redundancy_pct > 99) {
+      cat("\n  → REDUNDANT: Location column is duplicate of lat/lon columns\n")
+    } else {
+      cat("  → NOT REDUNDANT: Location column contains different information\n")
+      mismatches <- complete_rows[!both_match][1:3]
+      if (nrow(mismatches) > 0) {
+        cat("\nSample mismatches:\n")
+        print(mismatches[, .(latitude, longitude, location, location_lat, 
+                             location_lon)])
+      }
+    }
+  }
+}
+
+#########################################################################
+# check to see if there are any non-matches between 'borough' and 'park_borough'
+
+# reference + duplicates
+reference_field <- "borough"
+dup_fields <- c("park_borough", "taxi_company_borough")
+
+# (optional) sanity check that columns exist
+missing <- setdiff(c(reference_field, dup_fields), names(d311))
+if (length(missing)) stop("Missing columns: ", paste(missing, collapse = ", "))
+
+# Run the checks (NA==NA counted as match; text normalized; Pareto by agency)
+res_list <- lapply(dup_fields, function(dup) {
+  detect_duplicates(
+    d311,
+    reference_field    = reference_field,
+    duplicate_field    = dup,
+    trim_ws            = TRUE,
+    case_insensitive   = TRUE,
+    blank_is_na        = TRUE,
+    na_equal           = TRUE,          # <-- count matching NAs as matches
+    percent_base       = "all_rows",
+    make_pareto        = TRUE,          # <-- Pareto for non-matches
+    pareto_group_col   = "agency",
+    chart_dir          = chart_dir
+  )
+})
+names(res_list) <- dup_fields
+
+# Roll up your key metric: % duplication (matches) for each duplicate field
+dup_summary <- data.table::rbindlist(lapply(seq_along(res_list), function(i) {
+  data.table::data.table(
+    duplicate_field = names(res_list)[i],
+    pct_duplication = res_list[[i]]$stats$pct_matching
+  )
+}))
+dup_summary[order(-pct_duplication)]
+
+
 #########################################################################
 
 cat("\n\n**********CHECKING FOR ALLOWABLE AND VALID VALUES**********\n")
@@ -890,7 +1068,6 @@ status_res <- report_status_closed_date_exceptions(
   flip          = FALSE,
   min_count     = 1
 )
-
 
 ################################################################################
 # --- NYC bounding box (from NYBBWI metadata) ---
@@ -976,6 +1153,15 @@ res <- flag_out_of_bounds_latlon(
   tolerance_m = 100
 )
 
+# Remove unused fields type immediately
+d311[, c(
+  "latitude",
+  "longitude",
+  "location"
+) := NULL]  # Remove immediately
+
+gc()  # Force garbage collection
+
 ################################################################################
 # Check to see if any of the x or y state plane coordinates fall outside 
 # the extreme points of New York City.
@@ -1041,6 +1227,14 @@ if (nrow(y_outliers) == 0) {
   print(head(y_outliers[, c("unique_key", "agency", "y_coordinate_state_plane")]))
 }
 
+# Remove unused fields type immediately
+d311[, c(
+  "y_coordinate_state_plane", 
+  "x_coordinate_state_plane"
+  ) := NULL]  # Remove immediately
+
+gc()  # Force garbage collection
+
 ################################################################################
 # --- Allowed sets -------------------------------------------------------------
 
@@ -1091,6 +1285,15 @@ valid_community_boards <-
   )
 
 # Check for invalid zip codes in d311$incident_zip using USPSzipcodesOnly
+#########################################################################
+# Load the USPS zipcode file
+message("\nReading the USPS zipcode file.")
+
+USPS_zipcode_file_path <- file.path(data_dir, "USPS_zipcodes.rds")
+
+USPSzipcodes <- readRDS(USPS_zipcode_file_path)
+if (!is.data.table(USPSzipcodes)) setDT(USPSzipcodes)  # converts in place
+
 valid_USPS_zipcodes <- as.list(USPSzipcodes$zip)
 
 # Field to include "agency" in the computed dataset
@@ -1197,6 +1400,14 @@ summary_df <- data.frame(
 )
 print(summary_df, row.names = FALSE)
 
+# Remove unused fields type immediately
+d311[, c(
+  "address_type", 
+  "open_data_channel_type",
+  "vehicle_type") := NULL]  # Remove immediately
+
+gc()  # Force garbage collection
+
 #########################################################################
 
 cat("\n\n**********CHECKING FOR DATE FIELD ISSUES **********\n")
@@ -1211,21 +1422,27 @@ cat("\n\n**********CHECKING FOR DATE FIELD ISSUES **********\n")
 
 cat("\n=== CALCULATING SR DURATIONS FOR LATER USE ===\n")
 
-d311 <- calculate_durations(d311, "created_date", "closed_date", tz = "America/New_York", in_place = FALSE)
+d311 <- calculate_durations(d311, 
+                            "created_date", 
+                            "closed_date", 
+                            tz = "America/New_York",
+                            keep_parsed_timestamps = FALSE,
+                            in_place = FALSE)
 
 # ==============================================================================
-# SECTION 1: CREATED DATE ANALYSIS
+# ==============================================================================
+# SECTION 1: DATE FIELD OVERVIEW - ALL DATE FIELDS
 # ==============================================================================
 
-cat("\n=== CREATED DATE ANALYSIS ===\n")
+cat("\n=== DATE FIELD YEAR DISTRIBUTION ANALYSIS ===\n")
 
-# Assuming date_cols is a character vector of column names
 date_cols <- c(
+  "created_date",
+  "closed_date",
   "resolution_action_updated_date",
-  "due_date",
-  "created_date", 
-  "closed_date"
+  "due_date"
 )
+
 for (col in date_cols) {
   cat("\n", rep("=", 60), "\n", sep = "")
   cat("Date Field:", col, "\n")
@@ -1261,98 +1478,102 @@ for (col in date_cols) {
   cat("\n")
 }
 
-# total rows in d311
+# ==============================================================================
+# SECTION 2: CREATED DATE DETAILED ANOMALY ANALYSIS
+# ==============================================================================
+
+cat("\n=== CREATED DATE ANOMALY ANALYSIS ===\n")
+
+# Total rows for percentage calculations
 total_rows <- num_rows_d311
 
+# Helper function for formatted count with percentage
 fmt_count_pct <- function(n, total) {
-  # Handle NA or zero totals gracefully
   if (is.null(total) || is.na(total) || total == 0) {
     return(sprintf("%s (n/a)", prettyNum(n, big.mark = ",")))
   }
-  
   pct <- 100 * n / total
   sprintf("%s (%.2f%%)", prettyNum(n, big.mark = ","), pct)
 }
 
+# Identify created_date anomalies
+future_created_dates        <- d311[created_date > as_of_date]
+past_created_dates          <- d311[created_date < genesis_date]
+missing_created_dates       <- d311[is.na(created_date)]
+midnight_only_created_dates <- d311[format(created_date, "%H:%M:%S") == "00:00:00"]
+noon_only_created_dates     <- d311[format(created_date, "%H:%M:%S") == "12:00:00"]
 
-  # Anomaly checks
-  future_created_dates        <- d311[created_date > as_of_date]
-  past_created_dates          <- d311[created_date < genesis_date]
-  missing_created_dates       <- d311[is.na(created_date)]
-  midnight_only_created_dates <- d311[format(created_date, "%H:%M:%S") == "00:00:00"]
-  noon_only_created_dates     <- d311[format(created_date, "%H:%M:%S") == "12:00:00"]
+# Print anomaly summary
+cat("\nCreated_date anomaly summary (tz = America/New_York):\n")
+cat("  Future created dates:   ", 
+    fmt_count_pct(nrow(future_created_dates), total_rows), "\n")
+cat("  Past created dates:     ", 
+    fmt_count_pct(nrow(past_created_dates), total_rows), "\n")
+cat("  Missing created dates:  ", 
+    fmt_count_pct(nrow(missing_created_dates), total_rows), "\n")
+cat("  Midnight-only created:  ", 
+    fmt_count_pct(nrow(midnight_only_created_dates), total_rows), "\n")
+cat("  Noon-only created:      ", 
+    fmt_count_pct(nrow(noon_only_created_dates), total_rows), "\n")
 
-  # Summary
-  cat("Created_date anomaly check (tz = America/New_York):\n")
-  cat("  Future created dates:   ", 
-      fmt_count_pct(nrow(future_created_dates), total_rows), "\n")
-  cat("  Past created dates:     ", 
-      fmt_count_pct(nrow(past_created_dates), total_rows), "\n")
-  cat("  Midnight-only created:  ", 
-      fmt_count_pct(nrow(midnight_only_created_dates), total_rows), "\n")
-   cat("  Noon-only created:      ", 
-      fmt_count_pct(nrow(noon_only_created_dates), total_rows), "\n")
-  
-  # Define anomaly datasets and their labels
-  anomaly_list_created <- list(
-    list(
-      dt = future_created_dates,
-      label = "Future Created Dates",
-      condition = "Created in Future"
-    ),
-    list(
-      dt = past_created_dates,
-      label = paste0("Past Created Dates: before ", 
-                     genesis_date,  " -- 311 launch date"),
-      condition = "Created Before 311 System launch"
-    ),
-    list(
-      dt = midnight_only_created_dates,
-      label = "Midnight Created Dates",
-      condition = "Created at Midnight"
-    ),
-    list(
-      dt = noon_only_created_dates,
-      label = "Noon Created Dates",
-      condition = "Created at Noon"
-    )
+# Define anomaly datasets for detailed analysis
+anomaly_list_created <- list(
+  list(
+    dt = future_created_dates,
+    label = "Future Created Dates",
+    condition = "Created in Future"
+  ),
+  list(
+    dt = past_created_dates,
+    label = paste0("Past Created Dates: before ", genesis_date, " -- 311 launch date"),
+    condition = "Created Before 311 System launch"
+  ),
+  list(
+    dt = midnight_only_created_dates,
+    label = "Midnight Created Dates",
+    condition = "Created at Midnight"
+  ),
+  list(
+    dt = noon_only_created_dates,
+    label = "Noon Created Dates",
+    condition = "Created at Noon"
   )
-  
-  # Loop through and create charts
-  # Simplified loop
-  for (anomaly in anomaly_list_created) {
-    if (nrow(anomaly$dt) > 0) {
-      plot_date_field_analysis(
-        DT = anomaly$dt,
-        date_col = created_date,
-        group_col = agency,
-        chart_dir = chart_dir,
-        label = anomaly$label,
-        condition_text = anomaly$condition,
-        min_agency_count = 2,
-        top_n = 30
-      )
-    } else {
-      cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
-    }
-  }
-  
-  # Handle missing_created_dates separately
-  if (nrow(missing_created_dates) > 0) {
-    cat("\n=== Missing Created Dates Summary ===\n")
-    cat(sprintf("Total records with missing created_date: %s\n", 
-                format(nrow(missing_created_dates), big.mark = ",")))
-    
-    missing_summary <- missing_created_dates[, .N, by = agency][order(-N)]
-    cat("\nTop agencies with missing created dates:\n")
-    print(head(missing_summary, 10))
+)
+
+# Generate detailed charts for each anomaly type
+for (anomaly in anomaly_list_created) {
+  if (nrow(anomaly$dt) > 0) {
+    plot_date_field_analysis(
+      DT = anomaly$dt,
+      date_col = created_date,
+      group_col = agency,
+      chart_dir = chart_dir,
+      label = anomaly$label,
+      condition_text = anomaly$condition,
+      min_agency_count = 2,
+      top_n = 30
+    )
   } else {
-    cat("\n=== Missing Created Dates Summary ===\n")
-    cat("No records with missing created_date found.\n")
+    cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
   }
+}
+
+# Special handling for missing created dates
+if (nrow(missing_created_dates) > 0) {
+  cat("\n=== Missing Created Dates Detail ===\n")
+  cat(sprintf("Total records with missing created_date: %s\n", 
+              format(nrow(missing_created_dates), big.mark = ",")))
   
+  missing_summary <- missing_created_dates[, .N, by = agency][order(-N)]
+  cat("\nTop agencies with missing created dates:\n")
+  print(head(missing_summary, 10))
+} else {
+  cat("\n=== Missing Created Dates Detail ===\n")
+  cat("No records with missing created_date found.\n")
+}  
+
 # ==============================================================================
-# SECTION 2: DUE DATE ANALYSIS
+# SECTION 3: DUE DATE ANALYSIS
 # ==============================================================================
 
 # Identify service requests with due_date before created_date
@@ -1454,7 +1675,7 @@ cat("\n=== DUE DATE ANALYSIS ===\n")
   )
   
 # ==============================================================================
-# SECTION 3: RESOLUTION UPDATE DATE ANALYSIS
+# SECTION 4: RESOLUTION UPDATE DATE ANALYSIS
 # ==============================================================================
 # Check for resolution_action_updated_date occurring before created_date
 # Excludes same-day cases where resolution time = 00:00:00 (likely defaults)
@@ -1561,7 +1782,7 @@ res <- report_resolution_update_before_created(
 )
 
 # ==============================================================================
-# SECTION 4: POST-CLOSED RESOLUTION UPDATE ANALYSIS
+# SECTION 5: POST-CLOSED RESOLUTION UPDATE ANALYSIS
 # ==============================================================================
 # Identify service requests with resolution updates occurring long after closure
 # Flags potential process violations or data entry delays
@@ -1572,117 +1793,10 @@ cat("\n=== POST-CLOSED RESOLUTION UPDATE ANALYSIS ===\n")
 options(error = recover)
 
 res <- report_post_closed_updates(
-  DT = d311,
-  resolution_action_threshold = 30,        # Days after closure
-  too_large_threshold = 365 * 6,        # 6 years in days
-  chart_dir = chart_dir
-)
-
-# ==============================================================================
-# SECTION 5: CLOSED DATE ANALYSIS
-# ==============================================================================
-# Identify service requests with closed dates in the future
-# Flags records where closed_date > max(created_date) + 1 day
-
-cat("\n===  CLOSED DATE ANALYSIS ===\n")
-
-# Anomaly checks
-future_closed_dates           <- d311[closed_date > as_of_date]
-past_closed_dates             <- d311[closed_date < genesis_date]
-missing_closed_dates          <- d311[is.na(closed_date)]
-midnight_only_closed_dates    <- d311[format(closed_date, "%H:%M:%S") == "00:00:00"]
-noon_only_closed_dates        <- d311[format(closed_date, "%H:%M:%S") == "12:00:00"]
-closed_before_created         <- d311[closed_date < created_date]
-
-# Summary
-cat("closed_date anomaly check (tz = America/New_York):\n")
-cat("  Future closed dates:   ", 
-    fmt_count_pct(nrow(future_closed_dates), total_rows), "\n")
-cat("  Past closed dates:     ", 
-    fmt_count_pct(nrow(past_closed_dates), total_rows), "\n")
-cat("  Missing closed dates:  ", 
-    fmt_count_pct(nrow(missing_closed_dates), total_rows), "\n")
-cat("  Midnight-only closed:  ", 
-    fmt_count_pct(nrow(midnight_only_closed_dates), total_rows), "\n")
-cat("  Noon-only closed:      ", 
-    fmt_count_pct(nrow(noon_only_closed_dates), total_rows), "\n")
-cat("  Closed < Created:      ", 
-    fmt_count_pct(nrow(closed_before_created), total_rows), "\n")
-
-
-# Define anomaly datasets and their labels for closed_date
-anomaly_list_closed <- list(
-  list(
-    dt = future_closed_dates,
-    label = "Closed Dates in the Future",
-    
-    condition = "Closed in Future"
-  ),
-  list(
-    dt = past_closed_dates,
-    label = "Closed Dates in the Past",
-    
-    condition = "Closed Before Created"
-  ),
-  list(
-    dt = midnight_only_closed_dates,
-    label = "Midnight Closed Dates",
-    
-    condition = "Closed at Midnight"
-  ),
-  list(
-    dt = noon_only_closed_dates,
-    label = "Noon Closed Dates",
-    
-    condition = "Closed at Noon"
-  ),
-  list(
-    dt = closed_before_created,
-    label = "Closed before Created",
-    include_boxplot = TRUE,
-    condition = "Closed < Created"
-  )
-)
-
-# Loop through and create charts
-for (anomaly in anomaly_list_resolution) {
-  if (nrow(anomaly$dt) > 0) {
-    plot_date_field_analysis(
-      DT = anomaly$dt,
-      date_col = closed_date,
-      group_col = agency,
-      chart_dir = chart_dir,
-      label = anomaly$label,
-      condition_text = anomaly$condition,
-      min_agency_count = 2,
-      top_n = 20
-    )
-  } else {
-    cat(sprintf("\nSkipping %s - no records\n", anomaly$label))
-  }
-}
-
-# Handle missing_closed_dates separately
-if (nrow(missing_closed_dates) > 0) {
-  cat("\n=== Missing Closed Dates Summary ===\n")
-  cat(sprintf("Total records with missing closed_date: %s\n", 
-              format(nrow(missing_closed_dates), big.mark = ",")))
-  
-  missing_summary <- missing_closed_dates[, .N, by = agency][order(-N)]
-  cat("\nTop agencies with missing closed dates:\n")
-  print(head(missing_summary, 10))
-} else {
-  cat("\n=== Missing Closed Dates Summary ===\n")
-  cat("No records with missing closed_date found.\n")
-}
-
-res <- report_future_closed(
-  DT = d311,
-  make_plots = TRUE,
-  chart_dir = chart_dir,
-  max_closed_date = max_closed_date,
-  boxplot_file = "future_closed_boxplot.pdf",
-  pareto_file = "future_closed_pareto.pdf"
+    DT = d311,
+    resolution_action_threshold = 30,        # Days after closure
+    too_large_threshold = 365 * 3,        # 6 years in days
+    chart_dir = chart_dir
 )
 
 # ==============================================================================
@@ -1710,14 +1824,10 @@ dst_start_summary <- analyze_dst_springforward(
 ) 
 
 ################################################################################
-
-#zero_screenout <- audit_zero_time_screenout(d311)
-
 # Call with the 2019 file path
 result <- summarize_backlog(
   DT = d311,
-  data_dir = data_dir
-)
+  data_dir = data_dir)
 
 ################################################################################
 # ==============================================================================
@@ -1730,9 +1840,9 @@ cat("\n=== ANALYZING TEMPORAL PATTERNS ===\n")
 
 # 1. Define the columns to iterate over (as strings)
 date_cols <- c(
-  "resolution_action_updated_date",
-  "created_date", 
-  "closed_date"
+  "created_date",
+  "closed_date",
+  "resolution_action_updated_date"
 )
 
 # 2. Define the agency column name as a string (to be injected into the function call)
@@ -1762,7 +1872,6 @@ for (col_name in date_cols) {
   
   all_patterns_results[[result_name]] <- results
 }
-
 
 #########################################################################
 
@@ -1826,21 +1935,21 @@ cat("\n=== ANALYZING NEGATIVE DURATIONS ===\n")
 # Filter to negative duration records
 negative_data <- d311[duration_days < 0 & !is.na(duration_days)]
 
+# Generate summary statistics
+limited_decimal_summary <- summary(negative_data$duration_days)
+round(limited_decimal_summary, 5)
+
 # Set histogram limits for negative values
 upper_limit_neg <- 0      # Less negative (closer to zero)
-lower_limit_neg <- -50   # More negative (further from zero)
+lower_limit_neg <- -0 # More negative (further from zero)
 
 # Create bounded dataset for plotting
 limited_negative_data <- negative_data[
   duration_days >= lower_limit_neg & duration_days <= upper_limit_neg
 ]
 
-# Generate summary statistics
-summary(negative_data$duration_day)
-
 # Count records within plotting bounds
 n_plotted_neg <- nrow(limited_negative_data)
-
 
 plot_histogram(
   DT         = limited_negative_data,
@@ -1867,6 +1976,25 @@ plot_histogram(
   add_stats  = TRUE,
   width      = 13,
   height     = 8.5
+)
+
+# Redfine limited negative for violin chart
+# Set histogram limits for negative values
+upper_limit_neg <- 0      # Less negative (closer to zero)
+lower_limit_neg <- -365 # More negative (further from zero)
+
+# Create bounded dataset for plotting
+limited_negative_data <- negative_data[
+  duration_days >= lower_limit_neg & duration_days <= upper_limit_neg
+]
+
+
+create_violin_chart(
+  dataset = limited_negative_data,
+  x_axis_field = "duration_days",
+  chart_directory = chart_dir,
+  chart_file_name = "negative_duration_SR_violin.pdf",
+  chart_title = ""
 )
 
 # ==============================================================================
@@ -1919,190 +2047,17 @@ cat("LogNormal_3SD threshold:", threshold_numeric, "seconds\n")
 # - Positive (small, large, extreme)
 
 cat("\n=== COMPREHENSIVE DURATION CATEGORY ANALYSIS ===\n")
- 
 duraton_analysis <- analyze_duration_QA(d311, chart_dir = chart_dir)
 
-
 cat("\n=== RESPONSE TIMES BY COMPLAINT CATEGORY ANALYSIS ===\n")
-
 complaint_stats <- summarize_complaint_response(
   d311, 
   print_top = 300,
   min_records = 25)
-
   
 # ==============================================================================
 # END OF DURATION ANALYSIS
 # ==============================================================================
-
-  
-#########################################################################
-  
-cat("\n\n**********CHECKING FOR DUPLICATE VALUES**********\n")
-
-#########################################################################
-message("\nChecking fields for duplicates.")
-
-# Filter complete cases
-valid_data <- d311[!is.na(location) & !is.na(latitude) & !is.na(longitude)]
-if (nrow(valid_data) == 0) {
-  cat("No complete location data found for comparison.\n")
-  redundancy_pct <- 0
-} else {
-  # Use strcapture for safer parsing of "(lat, lon)" strings
-  coords <- strcapture(
-    pattern = "^\\(([^,]+),\\s*([^)]+)\\)$",
-    x = valid_data$location,
-    proto = list(lat = numeric(), lon = numeric())
-  )
-  
-  # Combine safely into valid_data
-  valid_data[, `:=`(
-    location_lat = coords$lat,
-    location_lon = coords$lon
-  )]
-  
-  # Drop rows where regex failed
-  complete_rows <- valid_data[!is.na(location_lat) & !is.na(location_lon)]
-  
-  total_rows <- nrow(complete_rows)
-  
-  if (total_rows == 0) {
-    cat("No rows with extractable location coordinates found.\n")
-    redundancy_pct <- 0
-  } else {
-    # Round to 5 decimal places, then allow small variance (±0.00001)
-    complete_rows[, lat_match := abs(round(as.numeric(latitude), 6) - 
-                               round(as.numeric(location_lat), 6)) <= 0.000001]
-    complete_rows[, lon_match := abs(round(as.numeric(longitude), 6) - 
-                               round(as.numeric(location_lon), 6)) <= 0.000001]
-    complete_rows[, both_match := lat_match & lon_match]
-    
-    lat_matches  <- sum(complete_rows$lat_match, na.rm = TRUE)
-    lon_matches  <- sum(complete_rows$lon_match, na.rm = TRUE)
-    exact_matches <- sum(complete_rows$both_match, na.rm = TRUE)
-    redundancy_pct <- 100 * exact_matches / total_rows
-    
-    cat("\nLocation redundancy check (5 decimals ±0.00001):\n")
-    cat(sprintf("  Complete rows analyzed: %d\n", total_rows))
-    cat(sprintf("  Latitude matches: %d (%.2f%%)\n", lat_matches, 
-                100 * lat_matches / total_rows))
-    cat(sprintf("  Longitude matches: %d (%.2f%%)\n", lon_matches, 
-                100 * lon_matches / total_rows))
-    cat(sprintf("  Both match exactly: %d (%.2f%%)\n", exact_matches, 
-                redundancy_pct))
-    
-    if (redundancy_pct > 99) {
-      cat("\n  → REDUNDANT: Location column is duplicate of lat/lon columns\n")
-    } else {
-      cat("  → NOT REDUNDANT: Location column contains different information\n")
-      mismatches <- complete_rows[!both_match][1:3]
-      if (nrow(mismatches) > 0) {
-        cat("\nSample mismatches:\n")
-        print(mismatches[, .(latitude, longitude, location, location_lat, 
-                             location_lon)])
-      }
-    }
-  }
-}
-
-#########################################################################
-# check to see if there are any non-matches between 'borough' and 'park_borough'
-
-# reference + duplicates
-reference_field <- "borough"
-dup_fields <- c("park_borough", "taxi_company_borough")
-
-# (optional) sanity check that columns exist
-missing <- setdiff(c(reference_field, dup_fields), names(d311))
-if (length(missing)) stop("Missing columns: ", paste(missing, collapse = ", "))
-
-# Run the checks (NA==NA counted as match; text normalized; Pareto by agency)
-res_list <- lapply(dup_fields, function(dup) {
-  detect_duplicates(
-    d311,
-    reference_field    = reference_field,
-    duplicate_field    = dup,
-    trim_ws            = TRUE,
-    case_insensitive   = TRUE,
-    blank_is_na        = TRUE,
-    na_equal           = TRUE,          # <-- count matching NAs as matches
-    percent_base       = "all_rows",
-    make_pareto        = TRUE,          # <-- Pareto for non-matches
-    pareto_group_col   = "agency",
-    chart_dir          = chart_dir
-  )
-})
-names(res_list) <- dup_fields
-
-# Roll up your key metric: % duplication (matches) for each duplicate field
-dup_summary <- data.table::rbindlist(lapply(seq_along(res_list), function(i) {
-  data.table::data.table(
-    duplicate_field = names(res_list)[i],
-    pct_duplication = res_list[[i]]$stats$pct_matching
-  )
-}))
-dup_summary[order(-pct_duplication)]
-
-#########################################################################
-
-cat("\n\n**********CROSS STREET/INTERSECTION STREET ANALYSYS**********\n")
-message("\nCross_street and Intersection_street analysis.")
-
-# Define street pairs to analyze
-street_pairs <- list(
-  list(street1 = "cross_street_1", street2 = "intersection_street_1"),
-  list(street1 = "cross_street_2", street2 = "intersection_street_2"),
-  list(street1 = "landmark", street2 = "street_name")
-)
-
-# Initialize results storage
-all_comparison_results <- list()
-
-# Loop through each street pair
-for (i in seq_along(street_pairs)) {
-  pair <- street_pairs[[i]]
-  
-  cat("\n")
-  cat(paste(rep("=", 80), collapse = ""), "\n")
-  cat(sprintf("STREET PAIR ANALYSIS %d of %d\n", i, length(street_pairs)))
-#  cat(paste(rep("=", 80), collapse = ""), "\n")
-  
-  # Run comparison analysis
-  comparison_result <- compare_street_analyses(
-    dt = d311,
-    street1_col = pair$street1,
-    street2_col = pair$street2,
-    chart_dir = chart_dir,
-    run_enhanced = FALSE
-  )
-  
-  # Store results with descriptive name
-  pair_name <- sprintf("%s_vs_%s", pair$street1, pair$street2)
-  all_comparison_results[[pair_name]] <- comparison_result
-  
-#  cat(sprintf("Completed analysis for %s vs %s\n", pair$street1, pair$street2))
-}
-
-# Summary across all pairs
-cat("\n")
-cat(paste(rep("=", 80), collapse = ""), "\n")
-cat("SUMMARY ACROSS ALL STREET PAIRS\n")
-#cat(paste(rep("=", 80), collapse = ""), "\n")
-
-for (i in seq_along(all_comparison_results)) {
-  result <- all_comparison_results[[i]]
-  pair_name <- names(all_comparison_results)[i]
-  
-  cat(sprintf("\n%s:\n", toupper(gsub("_", " ", pair_name))))
-  cat(sprintf("  Match rate:     %5.4f%%\n", result$raw_analysis$match_rate * 100))
-  cat(sprintf("  Cleaned match rate: %5.4f%%\n", result$cleaned_analysis$match_rate * 100))
-  cat(sprintf("  Improvement:        %5.4f%% (%s records)\n", 
-              result$comparison$match_rate_improvement * 100,
-              scales::comma(result$comparison$match_improvement)))
-}
-
-cat(sprintf("\nTotal street pair analyses completed: %d\n", length(all_comparison_results)))
 
 #########################################################################
 # Conclude program

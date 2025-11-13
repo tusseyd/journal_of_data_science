@@ -12,7 +12,7 @@ report_future_closed <- function(
   if (!data.table::is.data.table(DT)) data.table::setDT(DT)
   
   # --- Column checks ---
-  needed <- c("unique_key", "created_date", "closed_date", "duration_sec", "agency")
+  needed <- c("unique_key", "created_date", "closed_date", "duration_days", "agency")
   missing_cols <- setdiff(needed, names(DT))
   if (length(missing_cols)) {
     stop("DT is missing required columns: ", paste(missing_cols, collapse = ", "))
@@ -26,18 +26,20 @@ report_future_closed <- function(
     stop("Datetime columns must be POSIXct/Date/character. Got: ", class(x)[1])
   }
   DT[, created_date := to_posix(created_date)]
-  DT[,  closed_date := to_posix(closed_date)]
+  DT[, closed_date := to_posix(closed_date)]
   
   # --- Cutoff default: max(created_date) + 1 day ---
   if (is.null(max_closed_date)) {
     max_created <- DT[, suppressWarnings(max(created_date, na.rm = TRUE))]
-    if (is.infinite(max_created)) stop("created_date is entirely NA; cannot set default max_closed_date")
+    if (is.infinite(max_created)) 
+      stop("created_date is entirely NA; cannot set default max_closed_date")
     max_closed_date <- max_created + 86400
   }
+  
   stopifnot(inherits(max_closed_date, "POSIXt"))
   
   # --- Core filter ---
-  cols_keep <- c("unique_key", "created_date", "closed_date", "duration_sec", "agency")
+  cols_keep <- c("unique_key", "created_date", "closed_date", "duration_days", "agency")
   closed_in_future <- DT[
     !is.na(closed_date) & closed_date > max_closed_date,
     ..cols_keep
@@ -67,7 +69,8 @@ report_future_closed <- function(
     sample_rows <- closed_in_future[
       sample.int(.N, min(.N, as.integer(sample_n)))
     ][
-      , .(unique_key, agency, created_date, closed_date, duration_sec, future_days)
+      , .(unique_key, agency, created_date, closed_date, round(duration_days, 2),
+          round(future_days, 2))
     ]
     
     cat("\nSample of SRs with 'closed_date' in the future:\n")
@@ -79,7 +82,7 @@ report_future_closed <- function(
     ][order(-count)][
       , `:=`(
         pct = round(count / sum(count), 2),
-        cum_pct = round(cumsum(count) / sum(count),2),
+        cum_pct = round(cumsum(count) / sum(count), 2),
         rank = .I
       )
     ]
@@ -91,21 +94,17 @@ report_future_closed <- function(
     if (make_plots) {
       if (!dir.exists(chart_dir)) dir.create(chart_dir, recursive = TRUE, showWarnings = FALSE)
       
-      # 1) Boxplot of future_days by agency (new helper signature)
+      # 1) Boxplot of future_days by agency
       if (exists("plot_boxplot", mode = "function")) {
-        # Check if there's more than one row in the dataset
         if (nrow(closed_in_future) > 1) {
-          # Opinionated defaults for this diagnostic:
-          # - top_n = 20 to avoid unreadable axes
-          # - flip = TRUE (horizontal) for long labels
           tryCatch({
             plot_boxplot(
               DT           = closed_in_future,
-              value_col    = future_days,                 # NSE
+              value_col    = future_days,
               chart_dir    = chart_dir,
               filename     = boxplot_file,
               title        = "SRs Closed in the Future (days beyond cutoff)",
-              by_col       = agency,                      # NSE
+              by_col       = agency,
               include_na_group = FALSE,
               top_n        = 20L,
               order_by     = "count",
@@ -115,7 +114,6 @@ report_future_closed <- function(
               min_count    = 1L
             )
             files$boxplot <- file.path(chart_dir, boxplot_file)
-            #      cat("\nBoxplot saved to: ", files$boxplot, "\n", sep = "")
           }, error = function(e) {
             cat("\nNOTE: plot_boxplot() errored: ", conditionMessage(e), "\n", sep = "")
           })
@@ -128,7 +126,6 @@ report_future_closed <- function(
       
       # 2) Pareto combo (agency counts)
       if (exists("plot_pareto_combo", mode = "function")) {
-        # Check if there's more than one row AND more than one agency
         unique_agencies <- length(unique(closed_in_future$agency))
         if (nrow(closed_in_future) > 1 && unique_agencies > 1) {
           tryCatch({

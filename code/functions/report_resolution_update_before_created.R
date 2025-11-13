@@ -12,6 +12,7 @@ report_resolution_update_before_created <- function(
 ) {
   stopifnot(data.table::is.data.table(DT))
   stopifnot(all(c(created_col, resolution_col, agency_col, unique_key_col) %in% names(DT)))
+  
   if (!dir.exists(chart_dir)) dir.create(chart_dir, recursive = TRUE, showWarnings = FALSE)
   
   # --- Calculate resolution duration in days
@@ -41,6 +42,7 @@ report_resolution_update_before_created <- function(
   
   # --- Sample records
   sample_rows <- bad_res_dates[sample(.N, min(.N, sample_size))]
+  sample_rows[, res_duration_days := round(res_duration_days, 2)]  # Round in place
   display_cols <- c(unique_key_col, agency_col, created_col, resolution_col, "res_duration_days")
   cat("\nSample problematic records:\n")
   print(sample_rows[, ..display_cols], row.names = FALSE)
@@ -90,7 +92,6 @@ report_resolution_update_before_created <- function(
         } else {
           
           # Extract numeric bounds more safely - handle both ( and [ brackets
-          # Alternative: use the original breaks to reconstruct bounds
           bin_counts[, bin_index := seq_len(.N)]
           
           # For each bin, find its corresponding break indices

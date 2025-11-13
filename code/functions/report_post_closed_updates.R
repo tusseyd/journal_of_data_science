@@ -35,16 +35,6 @@ report_post_closed_updates <- function(
   miss <- setdiff(req, names(DT))
   if (length(miss)) stop("Missing columns in DT: ", paste(miss, collapse = ", "))
   
-  # # --- Light coercion to POSIXct if needed (safer than hard-stopping) ---
-  # to_posix <- function(x) {
-  #   if (inherits(x, "POSIXt")) return(x)
-  #   if (inherits(x, "Date"))   return(as.POSIXct(x, tz = tz))
-  #   if (is.character(x))       return(as.POSIXct(x, tz = tz))
-  #   stop("Datetime columns must be POSIXct/Date/character. Got: ", class(x)[1])
-  # }
-  # DT[, closed_date := to_posix(closed_date)]
-  # DT[, resolution_action_updated_date := to_posix(resolution_action_updated_date)]
-  
   # --- Thresholds ---
   if (is.null(resolution_action_threshold)) {
     resolution_action_threshold <- get0("resolution_action_threshold", ifnotfound = 30)
@@ -73,17 +63,6 @@ report_post_closed_updates <- function(
   cat("\n\n")
   print(summary(raw_rows_positive$postClosedUpdateDuration)) 
   
-  # # Exclude extreme outliers > too_large_threshold
-  # rows_reasonable <- raw_rows_positive[postClosedUpdateDuration
-  #                                  <= too_large_threshold]
-  # 
-  # cat("\n\n=== Reasonable Positive Post-Closed Update Duration Summary ===\n")
-  # cat(sprintf("    Total post-closed updates: %s (%.2f%%)", 
-  #             prettyNum(nrow(rows_reasonable), big.mark = ","),
-  #             100 * nrow(rows_reasonable) / nrow(DT)))
-  # cat("\n\n")
-  # print(summary(rows_reasonable$postClosedUpdateDuration)) 
-  
   updated_late <- raw_rows_positive[
     postClosedUpdateDuration >  resolution_action_threshold &
       postClosedUpdateDuration <= 
@@ -99,7 +78,6 @@ report_post_closed_updates <- function(
   
   
   # Check the actual data range
-  # More explicit console output
   cat("Summary of postClosedUpdateDuration:\n")
   print(summary(updated_late$postClosedUpdateDuration))
   
@@ -111,9 +89,6 @@ report_post_closed_updates <- function(
   
   cat("\nNegative values (if any):\n")
   print(updated_late[postClosedUpdateDuration < 0, .(unique_key, postClosedUpdateDuration)])
-  
-  
-  
   
   updated_extremely_late <- raw_rows_positive[
     postClosedUpdateDuration > too_large_threshold
@@ -186,15 +161,20 @@ report_post_closed_updates <- function(
     # Late bucket (threshold exceeders)
     late_rows_max <- updated_late[postClosedUpdateDuration == late_max]
     cat(sprintf("\nMax late update row(s) (>%d & <=%d days): %.2f days (%.2f years)\n",
-                resolution_action_threshold, too_large_threshold, late_max, late_max / 365.25))
+                as.integer(resolution_action_threshold), 
+                as.integer(too_large_threshold), 
+                late_max, late_max / 365.25))
+    
     print(late_rows_max[, c(.SD, .(postClosedUpdateDuration = round(postClosedUpdateDuration, 2))),
                         .SDcols = setdiff(names(late_rows_max), "postClosedUpdateDuration")], 
           nrows = Inf, trunc.cols = FALSE, row.names = FALSE)
     
     # All positive rows
     pos_rows_max <- raw_rows_positive[postClosedUpdateDuration == pos_max]
+    
     cat(sprintf("\nExtreme max of all row(s) (>%d days): %.2f days (%.2f years)\n",
-                too_large_threshold, pos_max, pos_max / 365.25))
+                as.integer(too_large_threshold), pos_max, pos_max / 365.25))
+    
     print(pos_rows_max[, c(.SD, .(postClosedUpdateDuration = round(postClosedUpdateDuration, 2))),
                        .SDcols = setdiff(names(pos_rows_max), "postClosedUpdateDuration")], 
           nrows = Inf, trunc.cols = FALSE, row.names = FALSE)
@@ -279,6 +259,14 @@ report_post_closed_updates <- function(
         )
         files$boxplot <- file.path(chart_dir, boxplot_file)
         
+        create_violin_chart(
+          dataset = updated_late,
+          x_axis_field = "postClosedUpdateDuration",
+          chart_directory = chart_dir,
+          chart_file_name = "post_closed_resolution_violin.pdf",
+          chart_title = ""
+        )
+        
         # Add violin + boxplot hybrid
         
         # Before calling plot_violin_boxplot, assign to a simple name
@@ -297,7 +285,8 @@ report_post_closed_updates <- function(
           value_col        = postClosedUpdateDuration,
           chart_dir        = chart_dir,
           filename         = gsub("boxplot", "violin_boxplot", boxplot_file),
-          title            = sprintf("Post-Closed Updates > %d days (by agency) - Violin + Box", resolution_action_threshold),
+#         title            = sprintf("Post-Closed Updates > %d days (by agency) - Violin + Box", resolution_action_threshold),
+          title            = "",
           by_col           = agency,
           include_na_group = FALSE,
           top_n            = 30L,

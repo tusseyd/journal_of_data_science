@@ -50,13 +50,6 @@ plot_annual_counts_with_projection <- function(
   }
   
 
-  # # Right before: annual[, year := factor(year, levels = sort(unique(year)))]
-  # # Add these lines:
-  # print("Annual data before factor conversion:")
-  # print(annual)
-  # print(str(annual$year))
-  
-  
   # Ensure ordered factor year (important for stable ggplot handling)
   annual[, year := factor(year, levels = sort(unique(year)))]
   
@@ -287,7 +280,7 @@ plot_annual_counts_with_projection <- function(
   
   # ----- Save plot -----
   if (!dir.exists(chart_dir)) dir.create(chart_dir, recursive = TRUE)
-  ggplot2::ggsave(file.path(chart_dir, filename), plot = p, width = 10, height = 8.5)
+  ggplot2::ggsave(file.path(chart_dir, filename), plot = p, width = 13, height = 8.5)
   
   invisible(list(data = annual, model = model, plot = p, stats = multi_year_stats))
 }

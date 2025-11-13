@@ -75,7 +75,7 @@ analyze_duration_QA <- function(
   zero_total <- if (N_denom) X[denom, sum(duration_sec == 0, na.rm = TRUE)] else 0L
   pos_total <- if (N_denom) X[denom, sum(duration_sec > 0, na.rm = TRUE)] else 0L
   near_zero_excl_zero <- if (N_denom) X[denom, sum(duration_sec > 0 & 
-                                                     duration_sec <= near_zero_secs, na.rm = TRUE)] else 0L
+                         duration_sec <= near_zero_secs, na.rm = TRUE)] else 0L
   
   pct <- function(x) if (N_denom) sprintf("%.2f%%", 100 * x / N_denom) else "NA"
   
@@ -378,6 +378,7 @@ analyze_duration_QA <- function(
     label          = "NEGATIVE",
     chart_dir      = chart_dir,
     alt_DT         = negative_small,
+    suppress_main_title = TRUE,  # Main title is empty, subtitle remains
     min_agency_obs = 5,
     show_examples  = show_examples,
     key_col        = key_col,

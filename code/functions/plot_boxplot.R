@@ -297,6 +297,9 @@ plot_boxplot <- function(
     p <- p + ggplot2::scale_y_continuous(position = y_axis_side, oob = scales::oob_squish, limits = x_limits)
   }
   
+  # In your plot_boxplot function, find the section where you apply the theme
+  # Around line 280-295, modify the theme section:
+  
   # Theme and titles
   if (!is.null(title)) {
     total_n <- nrow(df_plot)
@@ -307,11 +310,12 @@ plot_boxplot <- function(
   # Apply comprehensive theme
   p <- p + ggplot2::theme_minimal() +
     ggplot2::theme(
-      plot.title = ggplot2::element_text(size = plot_title_size, face = "bold", hjust = 0),
-      plot.subtitle = ggplot2::element_text(size = plot_subtitle_size, hjust = 0),
+      plot.title = ggplot2::element_text(size = plot_title_size, face = "bold", hjust = 0.5),  # Changed hjust from 0 to 0.5
+      plot.subtitle = ggplot2::element_text(size = plot_subtitle_size, hjust = 0.5),  # Changed hjust from 0 to 0.5
       axis.text.x = ggplot2::element_text(size = x_axis_tick_size, angle = x_axis_label_angle, hjust = if(x_axis_label_angle != 0) 1 else 0.5),
       axis.text.y = ggplot2::element_text(size = y_axis_tick_size),
-      axis.title = ggplot2::element_text(size = label_size),
+      axis.title.x = ggplot2::element_text(size = label_size),  # Added explicit x-axis title
+      axis.title.y = ggplot2::element_blank(),  # ADDED: Remove y-axis label
       panel.grid.major = ggplot2::element_line(color = "gray90"),
       panel.grid.minor = ggplot2::element_blank(),
       legend.position = "none"

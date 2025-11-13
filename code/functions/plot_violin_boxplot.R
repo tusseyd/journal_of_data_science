@@ -10,10 +10,12 @@ plot_violin_boxplot <- function(
     top_n        = 30L,
     order_by        = c("median","count","median_desc"),
     flip         = TRUE,        # horizontal by default
+    
     # plot type options
     plot_type    = c("hybrid", "boxplot", "violin"),
     violin_scale = c("width", "area", "count"),
     violin_alpha = 0.5,
+    
     violin_trim  = FALSE,
     # appearance / jitter & outlier control
     box_width    = 0.5,
@@ -48,10 +50,17 @@ plot_violin_boxplot <- function(
 ) {
   
   if (!data.table::is.data.table(DT)) stop("DT must be a data.table.")
-  v_expr <- substitute(value_col); if (!is.name(v_expr)) stop("value_col must be unquoted.")
-  v_str  <- deparse(v_expr);      if (!v_str %in% names(DT)) stop(sprintf("Column '%s' not found.", v_str))
-  for (pkg in c("ggplot2","scales","grid")) if (!requireNamespace(pkg, quietly = TRUE)) stop(sprintf("Package '%s' is required.", pkg))
-  if (!dir.exists(chart_dir)) dir.create(chart_dir, recursive = TRUE, showWarnings = FALSE)
+  v_expr <- substitute(value_col); 
+  if (!is.name(v_expr)) stop("value_col must be unquoted.")
+  v_str  <- deparse(v_expr);      
+  if (!v_str %in% names(DT)) stop(sprintf("Column '%s' not found.", v_str))
+  
+  for (pkg in c("ggplot2","scales","grid")) 
+    if (!requireNamespace(pkg, quietly = TRUE)) 
+      stop(sprintf("Package '%s' is required.", pkg))
+  
+  if (!dir.exists(chart_dir)) dir.create(chart_dir, 
+                                       recursive = TRUE, showWarnings = FALSE)
   
   # Normalize arguments
   plot_type <- match.arg(plot_type)
@@ -90,8 +99,8 @@ plot_violin_boxplot <- function(
     # ... (full label calculation logic goes here) ...
     
     # 4. Final Limits Selection
-    x_limits[1] <- min(lower_limit_base, lower_limit_violin, label_lower_limit)
-    x_limits[2] <- max(upper_limit_base, upper_limit_violin, label_upper_limit)
+    x_limits[1] <- min(lower_limit_base, lower_limit_violin )
+    x_limits[2] <- max(upper_limit_base, upper_limit_violin)
   }
   # --- END X_LIMITS CALCULATION --
   

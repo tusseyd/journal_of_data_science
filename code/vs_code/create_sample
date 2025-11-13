@@ -1,0 +1,71 @@
+# Define base paths
+$input = "C:\Users\David\OneDrive\Documents\datacleaningproject\journal_of_data_science\data\raw_data\5-year_311SR_01-01-2020_thru_12-31-2024_AS_OF_09-23-2025.csv"
+$baseOutput = "C:\Users\David\OneDrive\Documents\datacleaningproject\journal_of_data_science\data\raw_data"
+
+# Parameters
+$targetSampleSize = 1000000
+$seedBase = 42  # Will vary per iteration
+
+# Columns to remove
+$columnsToRemove = @("Unique Key", "Agency Name", "Intersection Street 1", "Intersection Street 2", "Park Borough", "Location")
+
+# Read full file once
+$reader = [System.IO.StreamReader]::new($input)
+$header = $reader.ReadLine()
+Write-Host "Commencing full data read-in..."
+
+$allLines = New-Object System.Collections.Generic.List[string]
+while (!$reader.EndOfStream) {
+    $allLines.Add($reader.ReadLine())
+}
+$reader.Close()
+
+# Parse header once
+$headers = $header -split ','
+$keepIndexes = @()
+for ($i = 0; $i -lt $headers.Length; $i++) {
+    if ($columnsToRemove -notcontains $headers[$i]) {
+        $keepIndexes += $i
+    }
+}
+
+# Loop 10 times
+for ($loop = 4; $loop -le 10; $loop++) {
+    Write-Host "Sampling iteration $loop..."
+
+    # Shuffle with unique seed
+    $rand = [System.Random]::new($seedBase + $loop)
+    $shuffled = $allLines | Sort-Object { $rand.Next() }
+    $sampled = $shuffled[0..($targetSampleSize - 1)]
+
+    # Define output paths
+    $samplePath = Join-Path $baseOutput "sample_of_311SR_$loop.csv"
+    $trimmedPath = Join-Path $baseOutput "sample_of_311SR_trimmed_$loop.csv"
+
+    # Write full sample
+    Write-Host "Writing full sample to $samplePath"
+    $writer = [System.IO.StreamWriter]::new($samplePath)
+    $writer.WriteLine($header)
+    foreach ($line in $sampled) {
+        $writer.WriteLine($line)
+    }
+    $writer.Close()
+
+    # Write trimmed version
+    Write-Host "Writing trimmed sample to $trimmedPath"
+    $writer = [System.IO.StreamWriter]::new($trimmedPath)
+    $writer.WriteLine(($keepIndexes | ForEach-Object { $headers[$_] }) -join ',')
+
+    foreach ($line in $sampled) {
+        $fields = $line -split ','
+
+        # Pad missing fields
+        while ($fields.Length -lt $headers.Length) {
+            $fields += ''
+        }
+
+        $filtered = $keepIndexes | ForEach-Object { $fields[$_] }
+        $writer.WriteLine($filtered -join ',')
+    }
+    $writer.Close()
+}
