@@ -7,8 +7,11 @@ library(data.table)
 library(lubridate)
 
 na_only_and_backlog_by_year <- function(DT) {
+  
   stopifnot(data.table::is.data.table(DT))
+  
   if (!("created_date" %in% names(DT))) stop("missing created_date")
+  
   # We don't require closed_date to exist (but it should)
   DTv <- DT[!is.na(created_date)]
   
@@ -65,17 +68,4 @@ na_only_and_backlog_by_year <- function(DT) {
   out[]
 }
 
-# ----- Run it on d311 and print nicely -----
-res <- na_only_and_backlog_by_year(d311)
 
-cat("\n[Backlog sanity check at Jan 1 of each year]\n")
-print(
-  res[, .(
-    year,
-    na_only                 = format(na_only, big.mark = ","),
-    backlog_in              = format(backlog_in, big.mark = ","),
-    na_only_pct_of_backlog  = ifelse(is.na(na_only_pct_of_backlog), "n/a",
-                                     sprintf("%.2f%%", na_only_pct_of_backlog))
-  )],
-  row.names = FALSE, right = FALSE
-)

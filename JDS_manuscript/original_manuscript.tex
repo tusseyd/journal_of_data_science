@@ -154,7 +154,7 @@ enhancing local government transparency.
 Popular datasets include information on
 restaurant health inspection violations, car crashes, high school and
 college enrollment statistics, jail inmate charges, and the location
-of City-wide free Internet access points. These datasets have been
+of citywide free Internet access points. These datasets have been
 applied in civil life in various ways, such as mapping car crashes
 involving pedestrians and visualizing high school and college
 enrollment trends. Furthermore, they have enabled significant research
@@ -162,7 +162,7 @@ across multiple domains, including health \citep{cantor2018facets,
 shankar2021data}, urban development \citep{neves2020impacts}, and
 transportation \citep{gerte2019understanding}, aiding in the
 understanding and addressing of complex urban challenges.
-For example, NYC’s 311 data has been used to optimize resource
+For example, NYC's 311 data has been used to optimize resource
 allocation in urban planning and improve emergency response times,
 showcasing its practical relevance in real-time decision-making.
 
@@ -216,7 +216,7 @@ Request (SR) data as a case study. This dataset serves as a prime
 example for examining key issues in data curation, including data 
 validity, consistency, and curation efficiency. We illustrate these 
 points with live examples drawn from our 
-processing of the 311 SR data. Secondly, building upon insights 
+processing of the 311 SR data. Second, building upon insights 
 gained from this case study, we propose a set of data curation 
 principles tailored for government-released open data. These 
 principles are designed to address the unique challenges 
@@ -294,12 +294,13 @@ Warehouse.
 The impact of NYC 311 data extends beyond operational efficiency; it
 has become instrumental in shaping city governance and community
 engagement. Open data not only ensure governmental transparency
-but also empowers civic developers, the general public, and
+but also empower civic developers, the general public, and
 policy-makers \citep{minkoff2016nyc, o2017uncharted,
   kontokosta2021bias}.
 The data have been pivotal in providing advice on shelters
-during emergencies, handling inquiries during the COVID-19 pandemic,
-enforcing standards between landlords and tenants, reallocating taxi
+during emergencies, handling inquiries during the COVID-19 
+pandemic, enforcing standards between landlords 
+and tenants, reallocating taxi
 routes based on analyses by the Taxi and Limousine Commission (TLC),
 and improving responsiveness across city agencies.
 It also supports a wide range of studies in resource allocation and
@@ -312,7 +313,7 @@ social equity in service provision \citep{white2018promises,
 
 Our investigation uses a 311 SR dataset covering a five-year period (2020--2024), 
 and was collected on 10 October 2025. This dataset is used 
-to conduct analysis in areas such as data consistency, data validity, 
+to conduct analysis in data consistency, data validity, 
 redundant fields, etc. Instructions 
 on downloading this file from the NYC Open Data portal 
 are available in the supplemental material. 
@@ -344,7 +345,7 @@ complaints accounting for 68\% of all SRs.
 \item There are two borough fields, \texttt{borough} and \texttt{park\_borough}, 
 		which appear to be duplicates.
   
-\item There are seven street-related fields; two pairs of which appear to be duplicates:
+\item There are seven street-related fields, two pairs of which appear to be duplicates:
 
 \begin{multicols}{2}
 \begin{itemize}[label=\textbullet]
@@ -369,7 +370,7 @@ complaints accounting for 68\% of all SRs.
     \item \texttt{street\_name}
     \item \texttt{landmark}
     \item \texttt{block}
-    \item \texttt{x \& y \_coordinate\_state\_plane}
+    \item \texttt{x \& y\_coordinate\_state\_plane}
 \end{itemize}
 \end{multicols}
 
@@ -406,7 +407,7 @@ satisfaction.
   \label{fig:SR_complaints}
 \end{figure}
 
-Anomalies in the dataset are typically associated with specific city
+Dataset anomalies are typically associated with specific city
 agencies, which can facilitate targeted corrective actions. For example,
 some anomalies occur in only one agency, enabling precise remediation.
 Figure~\ref{fig:SRcountbyAgency} provides a breakdown of SRs by
@@ -496,9 +497,9 @@ actual error, correct, or holds some other status.
 % Sub-section: Pre-analysis Data Modifications
 %-------------------------------------------------------------------------------
 
-\subsection{Pre-analysis Data Modifications}
+\subsection{Data Preprocessing and Standardization}
 \label{subsec:premodifications}
-Prior to analysis, the raw dataset undergoes a series of preparatory
+Prior to analysis, we subject the raw dataset to a series of preparatory
 modifications to facilitate efficient processing. These steps include both
 structural adjustments and content standardization:
 
@@ -587,7 +588,7 @@ all missing values were standardized to \texttt{NA}. Notably,
 Accordingly, twice each year there are changes to 
 the local time as a result of observing 
 DST. This can introduce some unexpected results. For example, 
-on both March 13, 2022 and March 12, 2023 there are no times 
+on both March 13, 2022, and March 12, 2023, there are no times 
 between 1:59AM and 2:59AM. The 2:00AM hour on those dates 
 is simply missing owing to the clocks moving forward; at 2:00AM 
 it instantly becomes 3:00AM. This creates a gap in the hourly 
@@ -634,7 +635,7 @@ Although rare, these anomalies can disproportionately affect
 time-sensitive complaint categories such as
 \texttt{drug\_activity}, \texttt{homeless\_assistance}, and
 \texttt{disorderly\_youth}, and they can distort aggregate performance metrics.
-Even a small number of implausible durations can shift summary statistfics and
+Even a small number of implausible durations can shift summary statistics and
 obscure true operational patterns. Additional analysis of 
 DST effects are found in Section~\ref{sec:dst}.
 
@@ -871,7 +872,7 @@ However, some of these updates appear to be
 well beyond a normal or expected timeframe. We found
  27,810 entries that occur more than 30~days—and up to 1593~days (more than 
 four years)—post-closure. Figure~\ref{fig:resolution-violin} illustrates
-both the extent and volume of these long post-closed updates,
+both the extent and volume of these long post-closure updates,
 showing a notable concentration of updates within 
 the 30--200 day range. This raises 
 questions about whether such delayed updates are standard 
@@ -880,7 +881,7 @@ that 84\% of these late updates are associated with the TLC agency
 and 12\% with DSNY. Finally, 91 records exhibit extremely 
 late post-closure updates due to invalid \texttt{closed\_date} 
 values such as 1899-12-31 or 1900-01-01 which create
-an artificially post-closed update duration. Such behavior 
+an artificially post-closure update duration. Such behavior 
 could possibly be explained by the well-known 
 Structured Query Language (SQL) default-date behavior 
 associated with null datetimes 
@@ -905,7 +906,7 @@ arise in Microsoft Excel.
 \label{fig:negative-duration-violin}
 \end{subfigure}
 % Main figure caption
-\caption{Violin plots for post-closed resolution action updates and negative SR durations}
+\caption{Violin plots for post-closure resolution action updates and negative SR durations}
 \label{fig:violin-plots}
 \end{figure}
 
@@ -946,8 +947,8 @@ One possible explanation for the midnight peak is that some records were
 originally stored with only a YYYY-MM-DD calendar date 
 (e.g., \texttt{2024-09-11}) and later converted to a datetime type 
 during processing.
-When a timestamp is absent and field is converted to a datetime value,
- the typical system behavior is to assign a default value of
+When a timestamp is absent and field is converted to a datetime 
+value, typical system behavior is to assign a default value of
 \texttt{00{:}00{:}00}. Such behavior would, of course, artificially 
 inflate counts at midnight. This, however, does not explain the spikes
 at noon. As shown in Figure~\ref{fig:exacthours}, both 
@@ -1080,14 +1081,14 @@ potential need for consolidation:
 
   \item \texttt{borough} \& \texttt{taxi\_company\_borough}:  Despite 
   similar names, these fields exhibit only a 0.29\% match 
-  likely indicating that these fields serve different purposes. 
+   indicating that these fields likely serve different purposes. 
   The \texttt{taxi\_company\_borough} field is exclusive to the TLC.
 
   \item \texttt{agency} \& \texttt{agency\_name}:  
   The \texttt{agency} field contains the abbreviations of City 
   agencies (e.g., NYPD, DOT, DEP), while \texttt{agency\_name} 
   contains the full names (e.g., Department of Environmental Protection).  
-  Including both seems redundant, especially given that NYC agency 
+  Including both fields seems redundant, especially given that NYC agency 
   abbreviations are widely recognized and understood.
 
   \item \texttt{landmark} \& \texttt{street\_name}:  
@@ -1177,7 +1178,7 @@ would be employment of the cross-platform Apache Arrow package.
 Apache Arrow (arrow.apache.org) is an innovative, cross-language 
 development platform designed for in-memory data. 
 It defines a standard for representing columnar data, 
-enabling efficient analytics and real-time data processing. As such,
+enabling efficient real-time analytics and data processing. As such,
 it offers dramatic improvements in file storage size, as well as 
 efficient analysis and cross-platform support for R, Python, 
 and Julia programming languages. Remarkable storage 
@@ -1286,7 +1287,7 @@ significantly reduce file sizes and improve the efficiency
 of data analysis. Similarly, categorical variables could be 
 encoded in a standardized format to optimize storage and 
 streamline analyses. Reducing file size not only saves 
-storage space but also enhances the performance of queries, 
+storage space, but also enhances the performance of queries, 
 downloads, and analysis processes.
 
 

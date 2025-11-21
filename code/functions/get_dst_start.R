@@ -1,6 +1,6 @@
 get_dst_start <- function(years,
                           tz = "America/New_York",
-                          verbose = TRUE) {
+                          verbose = FALSE) {
   if (verbose) cat("\n[get_dst_start] ENTER\n")
   
   # Normalize and validate input
